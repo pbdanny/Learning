@@ -1,0 +1,72 @@
+---
+title: "Regression Model - Final Project"
+author: "Thanakrit Danny"
+date: "February 1, 2559 BE"
+output: html_document
+---
+
+# Excutive Summary
+
+From data mtcars, there is signifiant of regression of **mpg** by **am** as regressor. With the Varience Inflation factor technique points out others uncorrelated regressors :- **drat**, **vs** and **gear**. Any way with cacading regressors analysis show that including **drat** and **vs** show significant in regression model. 
+
+# Single Regression
+
+```{r}
+library(ggplot2)
+data("mtcars")
+dt <- mtcars
+#Test single-regression
+fit1 <- lm(mpg ~ am, data = dt)
+summary(fit1)$coefficients
+```
+
+As show in the coefficients summary the base level (**am** = 0; auto) average miles/gallon about 17.14 while the regression show that when **am** = 1 (noauto) average miles/gallon increase +7.244, confirm with the boxplot of both variables (pic 1). Also the residual plot show equally distributed between 0 of both **am** (pic 2).
+
+# Multiple regression
+
+To make sure unbias of the model, include others varibles in multiple regression. Start with varience inflation factor.
+
+```{r}
+library(car)
+fit2 <- lm(mpg ~ ., data = dt)
+vif(fit2)
+```
+
+the vif of **am** = 4.64 while the vif of varibles :- **cyl**, **disp**, **hp**, **wt**, **qsec** and **carb** has far from the **am** means those has correlation with regressor '**am**'; then  omit those varibles. Include only :- **drat**, **vs** and **gear** in our model.
+
+Next is to verify the most significant model with cascading the varible and anova test.
+
+```{r}
+fit1.1 <- update(fit1, mpg ~ am + drat)
+fit1.2 <- update(fit1, mpg ~ am + drat + vs)
+fit1.3 <- update(fit1, mpg ~ am + drat + vs + gear)
+anova(fit1, fit1.1, fit1.2, fit1.3)
+```
+
+Anyway, including the **gear** the significant of model < 95%, then we add only **drat** and **vs** in our model
+
+Re-confirm with the histogram of residual plot of fit1.2 model (pic 3), show close to normal distribution with mean = 0.
+
+# Appendix
+## pic 1 : Boxplot of **mgp** ~ **am**
+```{r, echo=FALSE}
+g <- ggplot(data = mtcars) +
+  geom_boxplot(aes(x = factor(am), y = mpg))
+g
+```
+
+## pic 2 : Boxplot residual of mgp ~ **am**
+```{r, echo=FALSE}
+h <- ggplot(data = mtcars) +
+  geom_boxplot(aes(x = factor(am), y = resid(fit1)))
+h
+```
+
+## pic 3 : Histogram residual of fit1.2
+```{r}
+i <- ggplot(data = mtcars) +
+  geom_histogram(aes(resid(fit1.2)))
+i
+
+```
+

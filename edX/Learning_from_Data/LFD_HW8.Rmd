@@ -1,0 +1,187 @@
+---
+title: "Learning form Data Homework #8"
+output: html_notebook
+---
+Question #2-10
+
+Download Training and Testing Data
+```{r}
+# Loading Train Data
+url <- "http://www.amlbook.com/data/zip/features.train"
+dat <- scan(file = url)
+digit <- dat[seq(from = 1, to = length(dat) - 2, by = 3)]
+inten <- dat[seq(from = 2, to = length(dat) - 1, by = 3)]
+sym <- dat[seq(from = 3, to = length(dat), by = 3)]
+d.train <- data.frame(digit, inten, sym)
+
+# Loading Test Data
+url <- "http://www.amlbook.com/data/zip/features.test"
+dat <- scan(file = url)
+digit <- dat[seq(from = 1, to = length(dat) - 2, by = 3)]
+inten <- dat[seq(from = 2, to = length(dat) - 1, by = 3)]
+sym <- dat[seq(from = 3, to = length(dat), by = 3)]
+d.test <- data.frame(digit, inten, sym)
+
+# Save data frame
+save(d.train, d.test, file = "DataHW8.RData")
+```
+
+Question #2-#6
+Polynomial Kernals
+Function for digit selection, SVM, calculation of Ein and Eout
+```{r}
+
+load(file = "DataHW8.RData")
+library("e1071")
+
+# Create target Y = {-1,1} by digit test type (one vs one) or (one vs all)
+fnDigitTestType <- function(data, d1, d2 = NA) {
+  data$Y <- as.factor(ifelse(data[,"digit"] == d1, 1, -1))
+  if (is.na(d2)) {  # not specify 2nd compare digit, return other digit as -1
+    return(data)
+  } else {  # if specify d2 then one vs one , return only subset of d2
+    return(data[data$digit == d1 | data$digit == d2, ])
+  }
+}
+
+fnSVM <- function(train, test, C = 0.01, Q = 2) {
+  re.list <- list()
+  model <- svm(x = train[ ,c("inten","sym")],
+               y = train[ ,"Y"],
+               type = "C-classification", scale = FALSE, 
+               kernel = "polynomial", degree = Q, cost = C)
+  pred <- predict(model, newdata = train[ ,c("inten","sym")])
+  Ein <- sum(train$Y != pred)/nrow(train)
+  pred <- predict(model, newdata = test[ ,c("inten","sym")])
+  Eout <- sum(test$Y != pred)/nrow(test)
+  re.list <- cbind(re.list, c(C, Q, model$tot.nSV, Ein, Eout))
+  return(re.list)
+}
+
+fnSVMDigit <- function(train, test, digit1, digit2 = NA, C = 0.01, Q = 2) {
+  d.tr <- fnDigitTestType(train, digit1, digit2)
+  d.te <- fnDigitTestType(test, digit1, digit2)
+  x <- as.data.frame.list(fnSVM(d.tr, d.te, C, Q))
+  x$digit <- digit1
+  x <- x[, c(6,1:5)]
+  colnames(x)  <- c("digit", "C", "Q", "noSupportVec", "Ein", "Eout")
+  return(x)
+}
+```
+
+Question2 - 6
+
+```{r}
+# Answer Q2
+ans1 <- list()
+for (i in seq(0, 8, by = 2)) {
+  x <- fnSVMDigit(d.train, d.test, i)
+  ans1 <- rbind(ans1, x)
+}
+
+# Answer Q3
+ans2 <- list()
+for (i in seq(1, 9, by = 2)) {
+  x <- fnSVMDigit(d.train, d.test, i)
+  ans2 <- rbind(ans2, x)
+}
+
+# Answer Q4
+# = 2393 - 800 ~ 1600
+
+# Ans Q5
+ans3 <- list()
+for (C in c(0.001, 0.01, 0.1, 1)) {
+  x <- fnSVMDigit(d.train, d.test, 5, 1, C, 2)
+  ans3 <- rbind(ans3, x)
+}
+
+# Ans Q6
+ans4 <- list()
+for (q in c(2, 5)) {
+  for (c in c(0.0001, 0.001, 0.01, 1)) {
+    x <- fnSVMDigit(d.train, d.test, 5, 1, c, q)
+  ans4 <- rbind(ans4, x)
+  }
+}
+
+```
+
+Question 7 - 8
+Select best Cost (C) on Polynimial Kernal
+use 10 folds cross validation
+function for SVM with CV give best C and  Ein
+```{r}
+# fn run SVM with CV
+
+fnSVMCV <- function(train, test, digit1, digit2 = NA, C = 0.01, Q = 2, f = 10) {
+  
+  d.tr <- fnDigitTestType(train, digit1, digit2)
+  rownames(d.tr) <- NULL  # Reset rownums of data
+  cv.idx <- sample(rep(1:f, nrow(d.tr)/f))  # create cv.idx for cv test
+  
+  out <- list()
+  for (i in 1:f) {  # Looping each fold
+    for (c in c(0.0001, 0.001, 0.01, 0.1, 1)) {  # Looping each C
+      x <- as.data.frame.list(fnSVM(d.tr[cv.idx != i,], d.tr[cv.idx == i,], c, 2))
+      x$fold <- i
+      x <- x[, c(6,1:5)]
+      colnames(x)  <- c("fold", "C", "Q", "noSupportVec", "Ein", "Ecv")
+      out <- rbind(out, x)
+    }  # End loop C
+  } # End loop fold
+  agg <- aggregate(out["Ecv"], by = out["C"], FUN = mean)   # Average Ecv by C
+  agg <- agg[order(agg$Ecv, agg$C), ]  # order by least Ecv and least C
+  return(agg[1, ])
+}
+```
+
+Qustion 7 - 8
+```{r}
+
+ans5 <- list()
+for (j in 1:10){
+  x <- fnSVMCV(d.train, d.test, 1, 5)
+  ans5 <- rbind(ans5, x)
+}
+```
+
+Question 9 - 10
+Radial Base Function kernal
+Q = 2
+
+```{r}
+
+fnSVMRBF <- function(train, test, C = 0.01, Q = 2) {
+  re.list <- list()
+  model <- svm(x = train[ ,c("inten","sym")],
+               y = train[ ,"Y"],
+               type = "C-classification", scale = FALSE, 
+               kernel = "radial", degree = Q, cost = C)
+  pred <- predict(model, newdata = train[ ,c("inten","sym")])
+  Ein <- sum(train$Y != pred)/nrow(train)
+  pred <- predict(model, newdata = test[ ,c("inten","sym")])
+  Eout <- sum(test$Y != pred)/nrow(test)
+  re.list <- cbind(re.list, c(C, Q, model$tot.nSV, Ein, Eout))
+  return(re.list)
+}
+
+
+fnSVMRBFDigit <- function(train, test, digit1, digit2 = NA, C = 0.01, Q = 2) {
+  d.tr <- fnDigitTestType(train, digit1, digit2)
+  d.te <- fnDigitTestType(test, digit1, digit2)
+  x <- as.data.frame.list(fnSVMRBF(d.tr, d.te, C, Q))
+  x$digit <- digit1
+  x <- x[, c(6,1:5)]
+  colnames(x)  <- c("digit", "C", "Q", "noSupportVec", "Ein", "Eout")
+  return(x)
+}
+
+ans6 <- list()
+for (C in c(0.01, 1, 100, 1e4, 1e6)) {
+  x <- fnSVMRBFDigit(d.train, d.test, 1, 5, C, 2)
+  ans6 <- rbind(ans6, x)
+}
+
+
+```

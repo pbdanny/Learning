@@ -1,0 +1,18 @@
+"0","# Train data"
+"0","url <- ""http://work.caltech.edu/data/in.dta"""
+"0","dat <- scan(file = url)"
+"2","Read 105 items
+"
+"0","x1 <- dat[seq(from = 1, to = length(dat) - 2, by = 3)]"
+"0","x2 <- dat[seq(from = 2, to = length(dat) - 1, by = 3)]"
+"0","y <- dat[seq(from = 3, to = length(dat), by = 3)]"
+"0","train <- data.frame(x1, x2, y)"
+"0","# Test Data"
+"0","url <- ""http://work.caltech.edu/data/out.dta"""
+"0","dat <- scan(file = url)"
+"2","Read 750 items
+"
+"0","x1 <- dat[seq(from = 1, to = length(dat) - 2, by = 3)]"
+"0","x2 <- dat[seq(from = 2, to = length(dat) - 1, by = 3)]"
+"0","y <- dat[seq(from = 3, to = length(dat), by = 3)]"
+"0","test <- data.frame(x1, x2, y)"

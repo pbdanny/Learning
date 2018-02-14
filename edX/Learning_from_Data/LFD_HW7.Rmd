@@ -1,0 +1,343 @@
+---
+title: "Learning form Data Homework #7"
+output: html_notebook
+---
+
+Question 1 - 5
+
+1. Read in the test & train -> transfrom to data.frame
+```{r}
+# Train data
+url <- "http://work.caltech.edu/data/in.dta"
+dat <- scan(file = url)
+x1 <- dat[seq(from = 1, to = length(dat) - 2, by = 3)]
+x2 <- dat[seq(from = 2, to = length(dat) - 1, by = 3)]
+y <- dat[seq(from = 3, to = length(dat), by = 3)]
+d.in <- data.frame(x1, x2, y)
+
+# Test Data
+url <- "http://work.caltech.edu/data/out.dta"
+dat <- scan(file = url)
+x1 <- dat[seq(from = 1, to = length(dat) - 2, by = 3)]
+x2 <- dat[seq(from = 2, to = length(dat) - 1, by = 3)]
+y <- dat[seq(from = 3, to = length(dat), by = 3)]
+d.out <- data.frame(x1, x2, y)
+```
+
+2. Create non-liner transformation function
+```{r}
+# pi non liner transformation function
+pi <- function(d) {
+  z <- data.frame(
+    z0 = rep(1, nrow(d)),
+    z1 = d$x1,
+    z2 = d$x2,
+    z3 = d$x1 ^ 2,
+    z4 = d$x2 ^ 2,
+    z5 = d$x1 * d$x2,
+    z6 = abs(d$x1 - d$x2),
+    z7 = abs(d$x1 + d$x2)
+  )
+ return(z) 
+}
+```
+
+3. Spliting data to train (first 25) and validation (last 10).
+```{r}
+d.in.train <- head(d.in, 25)
+d.in.val <- tail(d.in, 10)
+# for question 3 train = last 10
+d.in.train <- tail(d.in, 10)
+d.in.val <- head(d.in, 25)
+```
+
+4. Run Linear classification on k = 3:7
+
+```{r}
+E <- list()
+
+for (k in 3:7) {
+  # Subsetting matrix to 1:k 
+  Z <- as.matrix.data.frame(pi(d.in.train))[ ,0:k+1]
+  Y <- as.matrix(d.in.train$y)
+  W.lin <- solve(t(Z) %*% Z) %*% t(Z) %*% Y
+
+  # usee W.lin as final hypothesis G of H and calculate validation error
+  Z.val <- as.matrix.data.frame(pi(d.in.val))[ ,0:k+1]
+  Y.val <- as.matrix(d.in.val$y)
+  
+  G <- sign(Z.val %*% W.lin)
+  E.val <- sum(G != Y.val)/length(Y.val)
+  
+  # Calculate out ot sample error
+  Z.out <- as.matrix.data.frame(pi(d.out))[ ,0:k+1]
+  Y.out <- as.matrix(d.out$y)
+  G <- sign(Z.out %*% W.lin)
+  E.out <- sum(G != Y.out)/length(Y.out)
+  
+  row <- c(k, E.val, E.out)
+  E <- rbind(E, row)
+}
+```
+
+Question 8 : PLA 
+
+```{r}
+## Create dataset and target fn ----
+# Random datapoints as dataset D
+n = 10
+x <- data.frame(x0 = 1,
+                x1 = runif(n, min = -1, max = 1), 
+                x2 = runif(n, min = -1, max = 1))
+# plot(x$x1, x$x2)
+
+# Create target function
+f <- data.frame(slop = runif(1, min = -1, max = 1), 
+                intercept = runif(1, min = -1, max = 1))
+# abline(a = f$intercept, b = f$slop, col = "blue")
+
+# Assign output y from target function line
+# from formula x' = a + b*x1 if x2 > x' , then on the right side of line
+# if x2 <  x', on the left side of line
+
+# Assign output value y = {-1, 1} 
+x$y <- ifelse(x$x2 > (x$x1*f$slop + f$intercept), 1, -1)
+
+# defind color & shape for easily plotting
+
+plot(x$x1, x$x2, pch = ifelse(x$y == 1, 1, 2),
+     col = ifelse(x$y == 1, 4, 2))
+abline(a = f$intercept, b = f$slop, col = "green")
+
+
+## Start PLA algorithm----
+# Assing weight w
+w <- data.frame(x0 = 0, x1 = 0, x2 = 0)
+err <- 1
+i <- 1
+
+while(err > 0.000001) {
+  
+  # h(x) = transpose(w) * x
+  h <- sign(as.matrix(x[,c("x0", "x1", "x2")]) %*% t(w))
+  
+  # find mismatced idx when sign(w*x) != y
+  miss.idx <- h != x[, "y"]
+  
+  # Plot correct points and missing points
+  plot(x$x1, x$x2, pch = ifelse(x$y == 1, 1, 2))
+  abline(a = f$intercept, b = f$slop, col = "green")
+  points(x = x[miss.idx, "x1"], y = x[miss.idx, "x2"], pch = 4, col = 2)
+
+  # Show iteration count (i) and everage error = sum(miss points)/n of data
+  err <- sum(miss.idx)/n
+  cat(sprintf("iteration %d : avg err %f \n", i, err))
+  i <- i+1
+
+  # if err more than threshold then do update the w'
+  if(err > 0.000001 ) {
+    # Sample 1 miss-classified points to update w'
+    update.idx <- sample(which(miss.idx == TRUE), size = 1)
+    # Sample 1 miss-classified points to update w'
+    w <- w + t(as.matrix(x[update.idx, "y"])) %*% as.matrix(x[update.idx, c("x0", "x1", "x2")])
+    } 
+}
+## Calcualte P[f(x) != g(x)] with Monte Carlo Methods
+n.Monte <- 10000
+d.Monte <- data.frame(x0 = 1,
+                      x1 = runif(n.Monte, min = -1, max = 1), 
+                      x2 = runif(n.Monte, min = -1, max = 1))
+
+fx.Monte <- ifelse(d.Monte$x2 > (d.Monte$x1*f$slop + f$intercept), 1, -1)
+gx.Monte <- sign(as.matrix(d.Monte[c("x0", "x1", "x2")]) %*% t(w))
+P.fx.not.gx <- sum(fx.Monte != gx.Monte)/n.Monte
+
+```
+
+Question 8 : SVM with Quadratic Programming
+
+Dmat can be computed with a double loop. If you look really closely at the subscripts on slide 15 for y, and , and realize that is a vector, namely the row of x values for point , this double loop should be comprehensible. I did some single loops to validate the process. You wind up with an NxN matrix. Then apply @MarcinJankowski's adjustment.
+
+dvec took me longer to decipher. When you see  on slide 15, it means a vector of N rows, 1 column, where each value is -1. For many, I'm sure that was immediately apparent. I didn't get it until I saw the notation used in the e-chapter for (8.22)
+
+The constraint to which we are subjecting the minimization is  (lecture 14 slide 15). Amat is, as you said:
+
+\begin{pmatrix} \textbf{y}^\intercal \\ -\textbf{y}^\intercal \\ \mathbf{I}_{N \times N} \end{pmatrix}
+
+When we multiply this by \boldsymbol{\alpha} and subject it to the inequality constraint (i.e. Amat * alpha >= 0), we get
+
+\begin{pmatrix} \textbf{y}^\intercal \boldsymbol{\alpha} \\ -\textbf{y}^\intercal \boldsymbol{\alpha} \\ \mathbf{I}_{N \times N} \boldsymbol{\alpha} \end{pmatrix} = \begin{pmatrix} \textbf{y}^\intercal \boldsymbol{\alpha} \\ -\textbf{y}^\intercal \boldsymbol{\alpha} \\ \boldsymbol{\alpha} \end{pmatrix} \geq \textbf{0}_{(N+2) \times 1}
+
+which says that \textbf{y}^\intercal \boldsymbol{\alpha} \geq 0
+and -\textbf{y}^\intercal \boldsymbol{\alpha} \geq 0
+ , thus this forces \textbf{y}^\intercal \boldsymbol{\alpha}  = 0
+, and the last row states that \boldsymbol{\alpha} \geq 0
+, which is a condition mentioned in lecture 14 slide 14.
+
+```{r}
+# Quadratic Programming - Primal optimization (Apply Lagrangian 1 step)
+library(quadprog)
+
+Y <- as.matrix(x[, "y"])
+X <- as.matrix(x[, c("x1", "x2")])
+# create YY
+YY <- Y %*% t(Y)
+# create XX
+XX <- X %*% t(X)
+# Create Dmat
+Dmat <- YY*XX
+
+# Create dvec
+dvec <- matrix(rep(1, n), ncol = 1)
+
+# Create Amat
+A <- rbind(t(Y),  diag(nrow = n))
+Amat <- t(A)
+# create bvec
+bvec <- matrix(rep(0, n + 1), ncol = 1)
+
+# add djustment for Dmat to be positive definitive ----
+modification = 1e-13
+#n is number of records in training set.
+Dmat = Dmat + (modification * diag(n))
+qpr <- solve.QP(Dmat, dvec, Amat, bvec, meq = 1)
+alpha <- qpr$solution
+iter <- qpr$iterations[1]
+w <- t(Y * (alpha)) %*% X
+
+max.alpha.idx <- which.max(alpha)
+b <- (Y[max.alpha.idx] - w %*% X[max.alpha.idx,])
+hw <- c(b,w)
+length(qpr$solution[qpr$solution > (1/n^2)]) # = no of support vectors
+```
+
+Question 8 :
+
+```{r}
+library(dplyr)
+library(quadprog)
+
+### pla (n, x, y) : function calculate disagreement ----
+
+pla <- function(n, x, y) {
+  
+  # Initialized varible
+  w <- data.frame(x0 = 0, x1 = 0, x2 = 0)
+  err <- 1
+  i <- 1
+  
+  # run PLA
+  while(err > 0.000001) {
+    
+    # h(x) = signed of transpose(w) * x
+    h <- sign(as.matrix(x) %*% t(w))
+    
+    # find mismatced idx when sign(w*x) != y
+    miss.idx <- h != y
+    
+    # Show iteration count (i) and everage error = sum(miss points)/n of data
+    err <- sum(miss.idx) / n
+    i <- i + 1
+    
+    # if err more than threshold then do update the w'
+    if (err > 0.000001) {
+      
+      # Sample 1 miss-classified points to update w'
+      update.idx <- sample(which(miss.idx == TRUE), size = 1)
+      
+      # Sample 1 miss-classified points to update w'
+      w <- w + t(as.matrix(y[update.idx])) %*% as.matrix(x[update.idx,])
+      }
+  }
+  
+  ## Calculate P[f(x) != g(x)] with Monte Carlo Methods
+  
+  n.Monte <- 10000
+  d.Monte <- data.frame(x0 = 1,
+  x1 = runif(n.Monte, min = -1, max = 1),
+  x2 = runif(n.Monte, min = -1, max = 1))
+  
+  fx.Monte <- ifelse(d.Monte$x2 > (d.Monte$x1 * f$slop + f$intercept), 1, -1)
+  gx.Monte <- sign(as.matrix(d.Monte[c("x0", "x1", "x2")]) %*% t(w))
+  P.fx.not.gx <- sum(fx.Monte != gx.Monte) / n.Monte
+  
+  # Return P.fx.not.gx
+  return(P.fx.not.gx)
+}
+  
+
+### svm (n, x, y) : function calculate disagreement ----
+
+svm <- function(n, x, y){
+  
+  Y <- as.matrix(y)
+  X <- as.matrix(x[, c("x1", "x2")])  # SVM methodlogy , omit x0
+  
+  ## Create Parameter for Quadratic function ----
+  # Create Dmat
+  Dmat <- (Y %*% t(Y)) * (X %*% t(X))
+  
+  # Create dvec
+  dvec <- matrix(rep(1, n), ncol = 1)
+  
+  # Create Amat
+  A <- rbind(t(Y),  diag(nrow = n))
+  
+  # create bvec
+  bvec <- matrix(rep(0, n + 1), ncol = 1)
+  
+  # Add djustment for Dmat to be positive definitive
+  modification = 1e-13
+  Dmat = Dmat + (modification * diag(n))
+  qpr <- solve.QP(Dmat, dvec, Amat = t(A), bvec, meq = 1)
+  
+  # Select alpha that > 0 as support vector
+  alpha <- qpr$solution
+  w <- t(Y * (alpha)) %*% X
+  
+  # find b from any alpha that > 0 ; then use max alpha
+  max.alpha.idx <- which.max(alpha)
+  b <- (Y[max.alpha.idx] - w %*% X[max.alpha.idx, ])
+  
+  # Final g(x) function
+  g <- sign(X %*% t(w) + as.integer(b))
+
+  ## Calculate P[f(x) != g(x)]  ----
+  P.fx.not.gx <- sum(y != g) / n
+  
+  # Return P.fx.not.gx
+  return(P.fx.not.gx)
+}
+
+### Start sampling and test disagreement ----
+
+n <- 30
+L <- 20
+disagree <- list()
+
+for (l in 1:L) {
+  
+  # 1) Create data:x , target function:f and output:y ----
+  x <- data.frame(x0 = 1,
+                x1 = runif(n, min = -1, max = 1), 
+                x2 = runif(n, min = -1, max = 1))
+  
+  # target function
+  f <- data.frame(slop = runif(1, min = -1, max = 1), 
+                intercept = runif(1, min = -1, max = 1))
+  # Assign output value y = {-1, 1} 
+  y <- ifelse(x$x2 > (x$x1*f$slop + f$intercept), 1, -1)
+  
+  # PLA fn output:pla.dis
+  pla.err <- pla(n, x, y)
+  # SVM disagreement
+  svm.err <- svm(n, x, y)
+  # combine each i disagree of PLA and SVM
+  disagree <- bind_rows(disagree, data.frame(l, pla.err, svm.err))
+}
+
+disagree <- as.data.frame.list(disagree)
+svm.better.pla <- sum(disagree$svm.err < disagree$pla.err)/nrow(disagree)
+
+```
+

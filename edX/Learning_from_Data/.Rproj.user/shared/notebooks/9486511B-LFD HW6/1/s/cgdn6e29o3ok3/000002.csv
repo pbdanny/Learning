@@ -1,0 +1,8 @@
+"0","k <- -1"
+"0","lamda <- 10^k"
+"0","W.reg <- solve(t(Z) %*% Z + (lamda * diag(length(z)))) %*% t(Z) %*% Y"
+"0","# usee W.reg as final hypothesis G of H and find E.in"
+"0","G.reg <- sign(Z %*% W.reg)"
+"0","E.in.reg <- sum(G.reg != Y)/length(Y)"
+"0","G.out.reg <- sign(Z.test %*% W.reg)"
+"0","E.out.reg <- sum(G.out.reg != Y.test)/length(Y.test)"

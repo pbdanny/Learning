@@ -1,0 +1,99 @@
+Question 5-6
+
+```{r}
+u <- 1
+v <- 1
+nu <- 0.1  #Learning rate
+e <- (u*exp(v) - 2*v*exp(-u))^2  #initial error
+
+i <- 0  #initial iteration
+while(e >= 10^-14) {
+  i <- i + 1  #add iteration
+  u.new <- u - nu*2*(u*exp(v) - 2*v*exp(-u))*(exp(v)+2*v*exp(-u))  #update new u = u - partial diff E/u
+  v.new <- v - nu*2*(u*exp(v) - 2*v*exp(-u))*(u*exp(v) - 2*exp(-u))  #update new v = v - partial diff E/v
+  u <- u.new  #Assign new u
+  v <- v.new  #Assign new v
+  e <- (u*exp(v) - 2*v*exp(-u))^2  # update new e
+}
+
+```
+
+Question 7
+Coordinate descent
+
+```{r}
+u <- 1
+v <- 1
+nu <- 0.1  #Learning rate
+
+for(i in 1:15) {
+  u.new <- u - nu*2*(u*exp(v) - 2*v*exp(-u))*(exp(v)+2*v*exp(-u))  #update new u = u - partial diff E/u
+  u <- u.new  #Assign new u
+}
+
+u <- 1
+for(i in 1:15) {
+  v.new <- v - nu*2*(u*exp(v) - 2*v*exp(-u))*(u*exp(v) - 2*exp(-u))  #update new v = v - partial diff E/v
+  v <- v.new  #Assign new v
+}
+
+u <- u.new
+v <- v.new
+e <- (u*exp(v) - 2*v*exp(-u))^2  #final error
+```
+
+Question 8-9
+
+Create training set X and output Y and
+Run Logistic regression with Stochastic Gradient Descent
+```{r, message=TRUE, warning=TRUE}
+
+# define fixed parameter learning rate (nu), In-sample size (N)
+nu <- 0.01
+N <- 100
+
+for (j in 1:10) {
+  ## Input & Output initialization
+  # Create In-sample input X {R,R,R} and output Y {R}
+  x0 <- 1
+  x1 <- runif(min = -1, max = 1, n = N)
+  x2 <- runif(min = -1, max = 1, n = N)
+  X <- data.frame(x0, x1, x2)
+  # Create cut-off line for determine output Y
+  # Random 2 points from X 
+  p1 <- X[sample(1:nrow(X), size = 1), ]
+  p2 <- X[sample(1:nrow(X), size = 1), ]
+  # Create cutoff line from random points
+  y.slope <- (p1$x2 - p2$x2) / (p1$x1 - p2$x1)
+  y.int <- y.slope * p1$x1
+  # assign output y according to cutoff line created
+  Y <- ifelse(X$x2 > (X$x1 * y.slope + y.int), 1,-1)
+  
+  ## Stachostic GA Parts
+  # initialized weigh(w), no epoches count (n.epoch), initial gradient (gr.e)
+  w <- matrix(0, nrow = 1, ncol = 3)
+  n.epoch <- 0
+  all.epoch <- list()
+  gr.e <- matrix(100, nrow = 1, ncol = 3)
+  
+  while (norm(gr.e) * nu >= 0.01) {
+    
+    #shuffle data X
+    X <- X[sample(1:N, size = N),]
+    rownames(X) <- NULL
+    
+    #Start Stochastic GD each epoch
+    for (i in 1:N) {
+      gr.e <- -1 * (Y[i] %*% as.matrix(X[i,])) / as.integer(1 + exp(Y[i] %*% as.matrix(X[i,]) %*% t(as.matrix(w))))
+      w <- w - (nu * gr.e)
+      
+    }#for each epoch
+    n.epoch <- n.epoch + 1
+    
+  }#while gradient step >= 0.01
+  
+  all.epoch[[i]] <- n.epoch
+}
+
+mean(do.call(rbind, all.epoch))
+```

@@ -1,0 +1,78 @@
+---
+title: "Learning form Data Homework #6"
+output: html_notebook
+---
+Question 2 - 6
+
+1. Read in the test & train -> transfrom to data.frame
+```{r}
+# Train data
+url <- "http://work.caltech.edu/data/in.dta"
+dat <- scan(file = url)
+x1 <- dat[seq(from = 1, to = length(dat) - 2, by = 3)]
+x2 <- dat[seq(from = 2, to = length(dat) - 1, by = 3)]
+y <- dat[seq(from = 3, to = length(dat), by = 3)]
+train <- data.frame(x1, x2, y)
+
+# Test Data
+url <- "http://work.caltech.edu/data/out.dta"
+dat <- scan(file = url)
+x1 <- dat[seq(from = 1, to = length(dat) - 2, by = 3)]
+x2 <- dat[seq(from = 2, to = length(dat) - 1, by = 3)]
+y <- dat[seq(from = 3, to = length(dat), by = 3)]
+test <- data.frame(x1, x2, y)
+```
+
+2. Apply non-liner transformation
+
+```{r}
+# pi non liner transformation function
+pi <- function(d) {
+  z <- data.frame(
+    z0 = rep(1, nrow(d)),
+    z1 = d$x1,
+    z2 = d$x2,
+    z3 = d$x1 ^ 2,
+    z4 = d$x2 ^ 2,
+    z5 = d$x1 * d$x2,
+    z6 = abs(d$x1 - d$x2),
+    z7 = abs(d$x1 + d$x2)
+  )
+ return(z) 
+}
+```
+
+3. Linear Regression with one step learning
+
+```{r}
+
+Z <- as.matrix.data.frame(pi(train))
+Y <- as.matrix(train$y)
+W.lin <- solve(t(Z) %*% Z) %*% t(Z) %*% Y
+
+# usee W.lin as final hypothesis G of H and find E.in
+G <- sign(Z %*% W.lin)
+E.in <- sum(G != Y)/length(Y)
+
+# Use W.lin for calculate E.out
+Z.test <- as.matrix.data.frame(pi(test))
+Y.test <- as.matrix(test$y)
+G.out <- sign(Z.test %*% W.lin)
+E.out <- sum(G.out != Y.test)/length(Y.test)
+```
+
+Question 3
+Adding Regularization term
+```{r}
+k <- -1
+lamda <- 10^k
+W.reg <- solve(t(Z) %*% Z + (lamda * diag(length(z)))) %*% t(Z) %*% Y
+
+# usee W.reg as final hypothesis G of H and find E.in
+G.reg <- sign(Z %*% W.reg)
+E.in.reg <- sum(G.reg != Y)/length(Y)
+
+G.out.reg <- sign(Z.test %*% W.reg)
+E.out.reg <- sum(G.out.reg != Y.test)/length(Y.test)
+```
+

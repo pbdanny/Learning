@@ -1,0 +1,1 @@
+{"frames":[{"character_number":5,"end_character_number":117,"end_line_number":10,"file":"","func":"as.matrix(w[i, ])","line_number":10}],"message":"Error in w[i, ] : subscript out of bounds\n"}

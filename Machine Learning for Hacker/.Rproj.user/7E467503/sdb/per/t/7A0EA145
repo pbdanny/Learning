@@ -1,0 +1,21 @@
+{
+    "collab_server" : "",
+    "contents" : "library(tm)\nlibrary(ggplot2)\n\n# Setup data directory -----\nspam.path <- \"/Users/Danny/Downloads/spam/\" \nspam2.path <- \"/Users/Danny/Downloads/spam_2/\" \neasyham.path <- \"/Users/Danny/Downloads/easy_ham/\" \neasyham2.path <- \"/Users/Danny/Downloads/easy_ham2/\" \nhardham.path <- \"/Users/Danny/Downloads/hard_ham/\" \nhardham2.path <- \"/Users/Danny/Downloads/hard_ham_2/\"\n\n# Define function get msg ----\nget.msg <- function(file_name) {\n  # Open file connection \n  con <- file(file_name, open = \"rt\", encoding = \"latin1\")\n  text <- readLines(con)\n  # The message always begins after the first full line break \n  # which return index of first == \"\" , start with next line , then fetch to the last line\n  msg <- text[seq(which(text == \"\")[1] + 1, length(text), 1)]\n  close(con)\n  # paste with collapse, collapsed all vector of charactor to 1 vector of charactor\n  return(paste(msg, collapse=\"\\n\"))\n}\n\n# Reading all spam mail ----\n# dir list all files in path\nspam.docs <- dir(spam.path)\n# exclude filename = cmds from file list\nspam.docs <- spam.docs[spam.docs != \"cmds\"]\n# Apply get.msg to extract data from files\nall.spam <- sapply(spam.docs, function(p) get.msg(paste(spam.path,p,sep=\"\")))\n\n# Read vector of charactor and transform to corpus , TDM ----\n# TDM term doccument matrix = frequency table of words i = # words, j = # doccument \n\nget.tdm <- function(doc.vec) {\n  # VectorSource convert vector of charactor to object VectorSource \n  # Corpus convert object VectorSource to object Corpus\n  doc.corpus <- Corpus(VectorSource(doc.vec))\n  # Create control parameter for object TDM\n  control <- list(stopwords=TRUE, removePunctuation=TRUE, removeNumbers=TRUE,\n                  minDocFreq=2)\n  doc.dtm <- TermDocumentMatrix(doc.corpus, control)\n  return(doc.dtm)\n}\n\nspam.tdm <- get.tdm(all.spam)\n# Convert TDM to matrix\nspam.matrix <- as.matrix(spam.tdm)\n# Count frequency of each words \nspam.counts <- rowSums(spam.matrix)\n# Convert matrix to dataframe\nspam.df <- data.frame(cbind(names(spam.counts),\n                            as.numeric(spam.counts)), stringsAsFactors=FALSE) \nnames(spam.df) <- c(\"term\",\"frequency\") \n# Convert charactor to numeric\nspam.df$frequency <- as.numeric(spam.df$frequency)\n# % word occured compared with all other words\nspam.occurrence <- sapply(1:nrow(spam.matrix),\n                          function(i) {length(which(spam.matrix[i,] > 0))/ncol(spam.matrix)})\n# Density = frequency / sum frequency\nspam.density <- spam.df$frequency/sum(spam.df$frequency)\n# Add density and occurance to spam.df\nspam.df <- transform(spam.df, density=spam.density, occurrence=spam.occurrence)\n\nhead(spam.df[order(-spam.df$occurrence),])\n",
+    "created" : 1471082989964.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1454948699",
+    "id" : "7A0EA145",
+    "lastKnownWriteTime" : 1471244989,
+    "last_content_update" : 1471244989090,
+    "path" : "~/Machine Learning for Hacker/Spam Classifier.R",
+    "project_path" : "Spam Classifier.R",
+    "properties" : {
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
