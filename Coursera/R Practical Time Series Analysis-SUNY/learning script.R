@@ -65,3 +65,25 @@ resid(sleep_lin_reg)
 data(trees)
 View(trees)
 pairs(trees, pch = 21, bg = "brown", col = NA, cex = 1.1)
+
+# Week 2 : Visualize & describe time series data
+library(astsa)
+help(astsa)
+help(jj)
+plot(jj, type = "o", main = "Johnson & Johnson Q earning per share",
+     xlab = "Years", ylab = "Earning")
+
+help(flu)
+plot(flu, main = "Monthly Flu. & Pneu. deth in US", xlab = "Months",
+     ylab = "Death per 10000")
+
+plot(globtemp, type = "l", main = "Globe temp deviation",
+     xlab = "Year", ylab = "Temp deviation")
+plot(globtempl)
+plot(star)
+
+
+# Auto covarince
+pure_rand_process <- ts(rnorm(100))
+acf(pure_rand_process, type = "covariance")
+print(acf(pure_rand_process, type = "covariance"))
