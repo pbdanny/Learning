@@ -87,3 +87,51 @@ plot(star)
 pure_rand_process <- ts(rnorm(100))
 acf(pure_rand_process, type = "covariance")
 print(acf(pure_rand_process, type = "covariance"))
+
+# Random walk
+x <- NULL
+x[1] <- 0
+for (i in 2:1000) {
+  x[i] <- x[i-1] + rnorm(1)
+}
+rand_walk <- ts(x)
+plot(x, main = 'Random walk', ylab = '', xlab = 'Days', 
+     type = 'l', col = "blue", lwd = 2)
+print(acf(rand_walk))
+# high correlation = no stationality, in stochastic process
+
+# Detrend data with 'diff()' = x2-x1, x3-x2 ...
+plot(diff(rand_walk))
+
+# diff of rand_walk = pure random process , stationality
+acf(diff(rand_walk))
+# confirm stationality with acf 
+
+# Moving average
+
+# Generate noise
+noise=rnorm(10000)
+
+# Introduce a variable
+ma_2=NULL
+
+# Loop for generating MA(2) process
+
+for(i in 3:10000){
+  ma_2[i]=noise[i]+0.7*noise[i-1]+0.2*noise[i-2]
+}
+
+# Shift data to left by 2 units
+moving_average_process=ma_2[3:10000]
+
+# Put time series structure on a vanilla data
+moving_average_process=ts(moving_average_process)
+
+# Partition output graphics as a multi frame of 1 rows and 2 column
+par(mfrow=c(1,2))
+
+# plot the process and plot its ACF
+plot(moving_average_process, main='A moving average process of order 2', 
+     ylab=' ', col='blue')
+acf(moving_average_process, main='Correlogram of a moving average process of order 2')
+
