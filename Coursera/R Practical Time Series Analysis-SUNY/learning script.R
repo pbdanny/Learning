@@ -135,3 +135,12 @@ plot(moving_average_process, main='A moving average process of order 2',
      ylab=' ', col='blue')
 acf(moving_average_process, main='Correlogram of a moving average process of order 2')
 
+# sampling time series data
+set.seed(123)
+autocov <- acf(arima.sim(n=1000, model=list(ma=c(0.5, 0.5))), type = "covariance")
+# autocovarience at lag (0)
+autocov$acf[1] # R start time index = rownames - 1
+# autocorrelation 
+autocorr <- (acf(arima.sim(n=1000, model=list(ma=c(0.5, 0.5)))))
+autocorr$acf[3] # autocorr at lag (2)
+autocorr$acf[2] # autocorr at lag (1)
