@@ -144,3 +144,13 @@ autocov$acf[1] # R start time index = rownames - 1
 autocorr <- (acf(arima.sim(n=1000, model=list(ma=c(0.5, 0.5)))))
 autocorr$acf[3] # autocorr at lag (2)
 autocorr$acf[2] # autocorr at lag (1)
+
+## Simulate AR(p) process
+set.seed(2016)
+phi_1 <- 0.5
+phi_2 <- -0.4
+X_ts <- arima.sim(model = list(ar = c(phi_1, phi_2)), n = 1000)
+par(mfrow = c(2,1))
+plot(X_ts, main = paste0('AR Time Series , phi 1 : ', phi_1, ' phi 2 : ', phi_2))
+acf(X_ts, main = 'ACF of AR')
+dev.off()
