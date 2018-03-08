@@ -154,3 +154,48 @@ par(mfrow = c(2,1))
 plot(X_ts, main = paste0('AR Time Series , phi 1 : ', phi_1, ' phi 2 : ', phi_2))
 acf(X_ts, main = 'ACF of AR')
 dev.off()
+
+
+## week 4 Partial ACF
+# ACF of MA(q) coefficent will cease at time = q
+set.seed(123)
+par(mfrow = c(3 ,1))
+phi_1 <- 0.9
+phi_2 <- -0.6
+phi_3 <- 0.3
+data_ts <- arima.sim(n = 500, list(ar = c(phi_1, phi_2, phi_3)))
+plot(data_ts, main=
+       paste("Autoregressive Process with phi1 =", phi_1, " phi2 =", phi_2, " phi3 = ", phi_3))
+acf(data_ts, main="Autocorrelation Function")
+acf(data_ts, type="partial", main="Partial Autocorrelation Function")
+
+
+## Beveridge
+b <- read.csv(file = "/Users/Danny/Documents/Learning/Coursera/R Practical Time Series Analysis-SUNY/beveridge-wheat-price-index-1500.csv", 
+              header = T, stringsAsFactors = F)
+b <- b[1:370, ]
+b_ts <- ts(as.numeric(b[,2]), start = 1500)
+plot(b_ts, ylab = 'price', main = "Beveridge Wheat Price Data")
+
+# MA30 of data, MA from avg of left 15 + right 15 
+b_ma <- filter(b_ts, rep(1/31, 31), sides = 2)
+# plot MA30
+lines(b_ma, col = "red")
+
+par(mfrow = c(3,1))
+# smooth data with MA30
+Y <- b_ts/b_ma
+plot(Y, ylab = "scaled price", main = "Detrended data")
+# remove cannot smooth data, head & tails of data that could not find MA
+acf(na.omit(Y), main = "Autocorrelation of detrend data")
+acf(na.omit(Y), type = 'partial', main = "Partial Autocorrelation of detrend data")
+
+## use ar analysis AR process
+ar(na.omit(Y), order.max = 5)
+
+
+## Theory of Partial Auto Correlation
+library(isdals)
+data("bodyfat")
+str(bodyfat)
+pairs(bodyfat)
