@@ -199,3 +199,191 @@ library(isdals)
 data("bodyfat")
 str(bodyfat)
 pairs(bodyfat)
+cor(bodyfat)
+
+# try step-wise for best varible predict Fat
+fit_min <- lm(data = bodyfat, Fat ~ 1)
+fit_max <- formula(lm(data = bodyfat, Fat ~ .))
+step(fit_min, direction = "forward", scope = fit_max)
+# formula = Fat ~ Thight
+
+# Find correlation of Fat ~ Triceps, without Thigh effect
+fat_hat <- predict(lm(Fat ~ Thigh, data = bodyfat))
+triceps_hat <- predict(lm(Triceps ~ Thigh, data = bodyfat))
+# correlation on residule
+cor(bodyfat$Fat - fat_hat, bodyfat$Triceps - triceps_hat)
+
+# could use pcor.test
+library(ppcor)
+pcor.test(bodyfat$Fat, bodyfat$Triceps, bodyfat$Thigh)
+
+# Find correlation of Fat ~ Triceps, without Thight, Midarm effect
+fat_hat <- predict(lm(Fat ~ Thigh + Midarm, data = bodyfat))
+triceps_hat <- predict(lm(Triceps ~ Thigh + Midarm, data = bodyfat))
+# correlation on residule
+cor(bodyfat$Fat - fat_hat, bodyfat$Triceps - triceps_hat)
+
+# use pcor
+pcor(bodyfat)
+
+## Week 4 : simulation AR(2) and coefficient estimation
+set.seed(2017)
+
+# AR parameter
+sigma <- 4
+phi <- NULL
+phi[1:2] <-c (1/3, 1/2)
+phi
+
+n <- 10000
+
+ar_process <- arima.sim(n, model = list(ar = c(1/3, 1/2)), sd = 4)
+ar_process[1:5]
+
+# auto correlation function for Yule-walker matrix equation
+r <- NULL
+r[1:2] <- acf(ar_process, plot = F)$acf[2:3]
+r
+
+R <- matrix(1, nrow = 2, ncol = 2) # matrix of dimension 2 by 2, with entries all 1's.
+R
+
+R[1,2] <- r[1] # only diagonal entries are edited
+R[2,1] <- r[1] # only diagonal entries are edited
+R
+
+b <- matrix(r, nrow = 2, ncol = 1)# b- column vector with no entries
+b
+
+# solution for phi_hat
+phi_hat <- solve(R,b)
+phi_hat
+
+# calculate var of white noise
+c0 <- acf(ar_process, type = 'covariance', plot = F)$acf[1]
+var_hat <- c0*(1 - sum(phi_hat*r))
+var_hat
+
+par(mfrow = c(3,1))
+plot(ar_process, main = 'Simulated AR(2)')
+acf(ar_process, main = 'ACF')
+pacf(ar_process, main = 'PACF')
+
+# x_t=phi1*x_(t-1)+phi2* x_(t-2)+\phi_3*x_(t-3)+z_t
+# z_t~ N(0, sigma^2)
+
+set.seed(2017)
+sigma <- 4
+phi <- NULL
+phi[1:3] <- c(1/3, 1/2, 7/100)
+n <- 100000
+
+ar3_process <- arima.sim(n, model = list(ar = phi), sd = 4)
+
+r <- NULL
+r[1:3] <- acf(ar3_process, plot = F)$acf[2:4]
+r
+
+R <- matrix(1, nrow = 3, ncol = 3) 
+R[1,2] <- r[1] 
+R[1,3] <- r[2]
+R[2,1] <- r[1]
+R[2,3] <- r[1]
+R[3,1] <- r[2]
+R[3,2] <- r[1]
+R
+
+# b-column vector on the right
+b <- matrix(NA, nrow = 3 , ncol = 1) # b- column vector with no entries
+b[1,1] <- r[1]
+b[2,1] <- r[2]
+b[3,1] <- r[3]
+b
+
+# solve Rx=b and find phi's
+phi_hat <- solve(R,b)
+phi_hat
+
+# sigme estimation
+c0 <- acf(ar3_process, type = 'covariance', plot = F)$acf[1]
+var_hat <- c0*(1 - sum(phi_hat*r))
+var_hat
+
+par(mfrow = c(3,1))
+plot(ar3_process, main = 'Simulated AR(3)')
+acf(ar3_process, main = 'ACF')
+pacf(ar3_process, main = 'PACF')
+
+# Question Week 4 - Yule-Walker Eq. matrix
+r <- matrix(c(0.8, 0.6, 0.2), ncol = 1)
+phi <- matrix(1, ncol = 3, nrow = 3)
+phi[1,2] <- r[1]
+phi[1,3] <- r[2]
+phi[2,1] <- r[1]
+phi[2,3] <- r[1]
+phi[3,1] <- r[2]
+phi[3,2] <- r[1]
+phi
+phi_hat <- solve(phi, r)
+c0 <- 5
+var_hat <- c0*(1 - sum(phi_hat*r))
+var_hat
+
+# Modeling recruitment time series from 'astsa' package as an AR process
+
+library(astsa)
+my_data <- rec
+
+# Plot rec 
+plot(rec, main = 'Recruitment time series', col = 'blue', lwd = 3)
+
+# subtract mean to get a time series with mean zero
+ar_process = my_data - mean(my_data)
+
+# ACF and PACF of the process
+par(mfrow=c(2,1))
+acf(ar_process, main = 'Recruitment', col = 'red', lwd = 3)
+pacf(ar_process, main = 'Recruitment', col = 'green', lwd = 3)
+
+# order
+p <- 2
+
+# sample autocorreleation function r
+r <- NULL
+r[1:p] <- acf(ar_process, plot = F)$acf[2:(p+1)]
+cat('r =', r, '\n')
+
+# matrix R
+R <- matrix(1, p, p) # matrix of dimension 2 by 2, with entries all 1's.
+
+# define non-diagonal entires of R
+for(i in 1:p){
+  for(j in 1:p){
+    if(i!=j)
+      R[i,j] <- r[abs(i-j)]
+  }
+}
+R
+
+# b-column vector on the right
+b <- NULL
+b <- matrix(r, nrow = p , 1) # b- column vector with no entries
+b
+
+# solve(R,b) solves Rx=b, and gives x=R^(-1)b vector
+phi_hat <- NULL
+phi_hat <- solve(R,b)[,1]
+phi_hat
+
+#variance estimation using Yule-Walker Estimator
+c0 <- acf(ar_process, type = 'covariance', plot = F)$acf[1]
+c0
+
+var_hat <- c0*(1 - sum(phi_hat*r))
+var_hat
+
+# constant term in the model
+phi0_hat <- mean(my_data)*(1 - sum(phi_hat))
+phi0_hat
+
+cat("Constant:", phi0_hat," Coeffcinets:", phi_hat, " and Variance:", var_hat, '\n')
