@@ -444,3 +444,185 @@ phi0.hat <- mean(jj.log.return)*(1 - sum(phi.hat))
 phi0.hat
 
 cat("Constant:", phi0.hat," Coeffcinets:", phi.hat, " and Variance:", var.hat, '\n')
+
+
+## ARMA
+rm(list=ls(all=TRUE))
+set.seed(500) # Beginning of Heptarchy: Kent, Essex, Sussex,
+# Wessex, East Anglia, Mercia, and Northumbria. 
+data <- arima.sim( list(order = c(1,0,1), ar =.7, ma=.2), n = 1000000)
+par(mfcol = c(3,1 ))
+plot(data, main="ARMA(1,1) Time Series: phi1=.7, theta1=.2", xlim=c(0,400)) #first terms 
+acf(data, main="Autocorrelation of ARMA(1,1), phi1=.7, theta1=.2")
+acf(data, type="partial", main="Partial Autocorrelation of ARMA(1,1), phi1=.7, theta1=.2")
+
+# Major scientific discovery
+plot(discoveries,
+     main = "Time Series of Number of Major Scientific Discoveries in a Year")
+stripchart(discoveries, method = "stack", offset=.5, at=.15,pch=19, main="Number of Discoveries Dotplot",
+           xlab="Number of Major Scientific Discoveries in a Year", ylab="Frequency")
+par(mfcol = c(2,1 ))
+acf(discoveries, main="ACF of Number of Major Scientific Discoveries in a Year")
+acf(discoveries, type="partial", main="PACF of Number of Major Scientific Discoveries in a Year")
+
+# Fitting model with arima & AIC measure
+# Assumption p = c(0, 1, 2, 3) and q = c(0, 1, 2, 3)
+p <- c(0, 1, 2, 3)
+q <- c(0, 1, 2, 3)
+
+for (i in p) {
+  for (j in q) {
+    cat(paste0("ARMA (", i, ", 0, ",j, ") "))
+    cat(AIC(arima(discoveries, order = c(i, 0, j))))
+    cat("\n")
+  }
+}
+# fitting coefficient
+arima(discoveries, order = c(1, 0, 1))
+
+# auto ARIMA
+library(forecast)
+auto.arima(discoveries, d=0, approximation=FALSE)
+
+# use approximation calculation for coefficient, approximation = TRUE
+auto.arima(discoveries, d=0, approximation=TRUE)
+
+
+# ARIMA(2,1,1) Simulation
+# parameters
+phi <- c(.7, .2)
+beta <- 0.5
+sigma <- 3
+m <- 10000
+
+set.seed(5)
+Simulated.Arima <- arima.sim(n = m,
+                             list(order = c(2,1,1),
+                                  ar = phi, 
+                                  ma = beta))
+
+plot(Simulated.Arima, ylab = ' ', 
+     main = 'Simulated time series from ARIMA(2,1,1) process', 
+     col = 'blue', lwd = 2)
+
+acf(Simulated.Arima)
+
+Diff.Simulated.Arima <- diff(Simulated.Arima)
+
+plot(Diff.Simulated.Arima)
+
+acf(Diff.Simulated.Arima)
+
+pacf(Diff.Simulated.Arima)
+
+library(astsa)
+sarima(Simulated.Arima, 2, 1, 1, 0, 0, 0) # astsa not installed
+
+library(forecast)
+auto.arima(Simulated.Arima) # forecast not installed
+
+fit1 <- arima(Diff.Simulated.Arima, order = c(4,0,0))
+fit1
+
+fit2 <- arima(Diff.Simulated.Arima, order = c(2,0,1))
+fit2
+
+fit3 <- arima(Simulated.Arima, order = c(2,1,1))
+fit3
+
+## Female birth in 1959
+female_birth <- readxl::read_excel("/Users/Danny/Documents/Learning/Coursera/R Practical Time Series Analysis-SUNY/daily-total-female-births-in-cal.xlsx")
+
+colnames(female_birth) <- c('date', 'no_birth')
+
+plot(y = female_birth$no_birth, x = female_birth$date, type = "l",
+     main = "Daily female births 1959", xlab = 'date', ylab = 'no birth')
+
+# Roughly test if any autocorr coef. not = 0
+n <- female_birth$no_birth
+Box.test(n, lag = log(length(n)))
+
+# create time series data with frequency = daily in year =365.25
+ts_birth <- ts(female_birth$no_birth, start = c(1959, 1, 1), frequency = 365.25)
+
+# Some trend, detrend with diff()
+plot(diff(ts_birth), type = "l",
+     main = "Diff - Daily female births 1959", xlab = 'date', ylab = '')
+
+# Re-test if autocorrelation coef. not = 0
+Box.test(diff(ts_birth), lag = log(length(ts_birth)))
+
+# acf , pacf test for p, q
+acf(diff(female_birth$no_birth), main = 'ACF of difference data', 50)
+acf(diff(female_birth$no_birth), type = 'partial', main = 'PACF of difference data', 50)
+
+# try to fit model
+model1 <- arima(female_birth$no_birth, order = c(0, 1, 1))
+SSE1 <- sum(model1$residuals^2)
+# test if after model the residual is pure white noise, all autocorr = 0
+model1.test <- Box.test(model1$residuals, 
+                        lag = log(length(model1$residuals)))
+
+model2<-arima(female_birth$no_birth, order=c(0,1,2))
+SSE2<-sum(model2$residuals^2)
+model2.test<-Box.test(model2$residuals, lag = log(length(model2$residuals)))
+
+model3<-arima(female_birth$no_birth, order=c(7,1,1))
+SSE3<-sum(model3$residuals^2)
+model3.test<-Box.test(model3$residuals, lag = log(length(model3$residuals)))
+
+model4<-arima(female_birth$no_birth, order=c(7,1,2))
+SSE4<-sum(model4$residuals^2)
+model4.test<-Box.test(model4$residuals, lag = log(length(model4$residuals)))
+
+df<-data.frame(row.names=c('AIC', 'SSE', 'p-value'), c(model1$aic, SSE1, model1.test$p.value), 
+               c(model2$aic, SSE2, model2.test$p.value), c(model3$aic, SSE3, model3.test$p.value),
+               c(model4$aic, SSE4, model4.test$p.value))
+colnames(df)<-c('Arima(0,1,1)','Arima(0,1,2)', 'Arima(7,1,1)', 'Arima(7,1,2)')
+
+format(df, scientific=FALSE)
+
+# Fit a SARIMA model
+library(astsa)
+sarima(female_birth$no_birth, 0,1,2,0,0,0)
+
+# Quiz
+plot(BJsales)
+plot(diff(BJsales))
+plot(diff(diff(BJsales)))
+acf(diff(diff(BJsales)))
+pacf(diff(diff(BJsales)))
+d <- 2
+for(p in 1:4){
+  for(q in 1:2){
+    if(p+d+q<=6){
+      model<-arima(x=BJsales, order = c((p-1),d,(q-1)))
+      pval<-Box.test(model$residuals, lag=log(length(model$residuals)))
+      sse<-sum(model$residuals^2)
+      cat(p-1,d,q-1, 'AIC=', model$aic, ' SSE=',sse,' p-VALUE=', pval$p.value,'\n')
+    }
+  }
+}
+
+d <- 2
+for(p in 1:4){
+  for(q in 1:2){
+    if(p+d+q<=8){
+      model<-arima(x=BJsales, order = c((p-1),d,(q-1)))
+      pval<-Box.test(model$residuals, lag=log(length(model$residuals)))
+      sse<-sum(model$residuals^2)
+      cat(p-1,d,q-1, 'AIC=', model$aic, ' SSE=',sse,' p-VALUE=', pval$p.value,'\n')
+    }
+  }
+}
+
+model<-arima(BJsales, order=c(0,2,1))
+
+par(mfrow=c(2,2))
+
+plot(model$residuals)
+acf(model$residuals)
+pacf(model$residuals)
+qqnorm(model$residuals)
+
+sarima(BJsales,0,2,1,0,0,0)
