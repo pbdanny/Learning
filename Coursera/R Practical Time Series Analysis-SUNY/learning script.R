@@ -1,4 +1,4 @@
-# Statistic Review
+# Statistic Review ----
 
 plot(co2, main = "Atmospheric CO2 concentration")
 co2_values <- as.numeric(co2)
@@ -65,8 +65,8 @@ resid(sleep_lin_reg)
 data(trees)
 View(trees)
 pairs(trees, pch = 21, bg = "brown", col = NA, cex = 1.1)
-
-# Week 2 : Visualize & describe time series data
+# ----
+# Week 2 : Visualize & describe time series data ----
 library(astsa)
 help(astsa)
 help(jj)
@@ -154,9 +154,9 @@ par(mfrow = c(2,1))
 plot(X_ts, main = paste0('AR Time Series , phi 1 : ', phi_1, ' phi 2 : ', phi_2))
 acf(X_ts, main = 'ACF of AR')
 dev.off()
+# ----
 
-
-## week 4 Partial ACF
+## week 4 Partial ACF ----
 # ACF of MA(q) coefficent will cease at time = q
 set.seed(123)
 par(mfrow = c(3 ,1))
@@ -225,8 +225,8 @@ cor(bodyfat$Fat - fat_hat, bodyfat$Triceps - triceps_hat)
 
 # use pcor
 pcor(bodyfat)
-
-## Week 4 : simulation AR(2) and coefficient estimation
+# ----
+## Week 4 : simulation AR(2) and coefficient estimation ----
 set.seed(2017)
 
 # AR parameter
@@ -313,8 +313,8 @@ par(mfrow = c(3,1))
 plot(ar3_process, main = 'Simulated AR(3)')
 acf(ar3_process, main = 'ACF')
 pacf(ar3_process, main = 'PACF')
-
-# Question Week 4 - Yule-Walker Eq. matrix
+# ----
+# Question Week 4 - Yule-Walker Eq. matrix -----
 r <- matrix(c(0.8, 0.6, 0.2), ncol = 1)
 phi <- matrix(1, ncol = 3, nrow = 3)
 phi[1,2] <- r[1]
@@ -387,9 +387,8 @@ phi0_hat <- mean(my_data)*(1 - sum(phi_hat))
 phi0_hat
 
 cat("Constant:", phi0_hat," Coeffcinets:", phi_hat, " and Variance:", var_hat, '\n')
-
-
-## Johnson & Johnson quarterly earnings per share
+# ----
+## Johnson & Johnson quarterly earnings per share ----
 library(astsa)
 
 # Time plot for Johnson&Johnson
@@ -455,8 +454,8 @@ par(mfcol = c(3,1 ))
 plot(data, main="ARMA(1,1) Time Series: phi1=.7, theta1=.2", xlim=c(0,400)) #first terms 
 acf(data, main="Autocorrelation of ARMA(1,1), phi1=.7, theta1=.2")
 acf(data, type="partial", main="Partial Autocorrelation of ARMA(1,1), phi1=.7, theta1=.2")
-
-# Major scientific discovery
+# ----
+## Major scientific discovery ----
 plot(discoveries,
      main = "Time Series of Number of Major Scientific Discoveries in a Year")
 stripchart(discoveries, method = "stack", offset=.5, at=.15,pch=19, main="Number of Discoveries Dotplot",
@@ -482,7 +481,7 @@ arima(discoveries, order = c(1, 0, 1))
 
 # auto ARIMA
 library(forecast)
-auto.arima(discoveries, d=0, approximation=FALSE)
+ma(discoveries, d=0, approximation=FALSE)
 
 # use approximation calculation for coefficient, approximation = TRUE
 auto.arima(discoveries, d=0, approximation=TRUE)
@@ -529,8 +528,8 @@ fit2
 
 fit3 <- arima(Simulated.Arima, order = c(2,1,1))
 fit3
-
-## Female birth in 1959
+# ----
+## Female birth in 1959 ----
 female_birth <- readxl::read_excel("/Users/Danny/Documents/Learning/Coursera/R Practical Time Series Analysis-SUNY/daily-total-female-births-in-cal.xlsx")
 
 colnames(female_birth) <- c('date', 'no_birth')
@@ -585,8 +584,8 @@ format(df, scientific=FALSE)
 # Fit a SARIMA model
 library(astsa)
 sarima(female_birth$no_birth, 0,1,2,0,0,0)
-
-# Quiz
+# ----
+# Quiz week 5 ----
 plot(BJsales)
 plot(diff(BJsales))
 plot(diff(diff(BJsales)))
@@ -626,3 +625,267 @@ pacf(model$residuals)
 qqnorm(model$residuals)
 
 sarima(BJsales,0,2,1,0,0,0)
+# ----
+## Week#6, SARIMA intro ----
+
+x <- NULL
+z <- NULL
+n <- 10000
+
+z <- rnorm(n)
+x[1:13] <- 1
+
+for(i in 14:n){
+  x[i] <- z[i] + 0.7*z[i-1] + 0.6*z[i-12] + 0.42*z[i-13]
+}
+
+par(mfrow=c(2,1))
+plot.ts(x[12:120], main='The first 10 months of simulation SARIMA(0,0,1,0,0)_12', ylab='') 
+
+acf(x, main='SARIMA(0,0,1,0,0,1)_12 Simulation')
+# ----
+## SARIMA Johnson & Johnson ----
+# arima simulation to find best p,d,q, P,D,Q, S
+
+library(astsa)
+plot(jj)
+plot(log(jj))
+plot(diff(jj))
+plot(diff(log(jj)))
+par(mfrow = c(3,1))
+plot(diff(log(jj)), main = 'Johnson & Jonhson Earning : Log - return')
+acf(diff(log(jj)), main = 'acf')
+acf(diff(log(jj)), type = 'partial', main = 'partial')
+
+# acf show seasonal difference, use diff = 4 to stabilize
+plot(diff(diff(log(jj)), 4), main = 'Johnson & Jonhson Earning : Log - return - S = 4')
+acf(diff(diff(log(jj)), 4), main = 'acf : S = 4')
+acf(diff(diff(log(jj)), 4), type = 'partial', main = 'partial : S = 4')
+
+# test transform data
+Box.test(x = diff(diff(log(jj)), 4), lag = log(length(jj)))
+
+d <- 1
+DD <- 1
+per <- 4
+
+for(p in 1:2){
+  for(q in 1:2){
+    for(i in 1:2){
+      for(j in 1:2){
+        if(p + d + q + i + DD + j <= 10){
+          model <- arima(x = log(jj),  # test model with season portion
+                         order = c((p-1), d, (q-1)),  # p, d, q
+                         seasonal = list(order = c((i-1), DD, (j-1)),  # P, D, Q
+                                         period = per))  # seasonality
+          pval <- Box.test(model$residuals, lag = log(length(model$residuals)))
+          sse <- sum(model$residuals^2)
+          cat(p-1, d, q-1, i-1, DD, j-1, per,
+              'AIC=', model$aic, ' SSE=', sse,' p-VALUE=', pval$p.value,'\n')
+        }
+      }
+    }
+  }
+}
+
+## find estimator coefficient from best simulation parameter
+# p,d,q, P,D,Q = 0,1,1,1,1,0 with seasonality = 4
+
+library(astsa)
+sarima(log(jj), 0,1,1,1,1,0,4)
+
+# ----
+
+## SARIMA milk production ----
+
+milk <- read.csv('./Documents/Learning/Coursera/R Practical Time Series Analysis-SUNY/monthly-milk-production-pounds-p.csv',
+                 stringsAsFactors = FALSE)
+colnames(milk) <- c('month', 'Pounds')
+milk <- milk[-nrow(milk),]
+
+Milk <- as.numeric(milk$Pounds)
+
+par(mfrow = c(2,2))
+plot(Milk, type = 'l', main = 'Milk data')
+plot(diff(diff(Milk) ,12), type = 'l', main = 'Detrend, Deseasonal (S = 12)')
+acf(diff(diff(Milk) ,12), lag.max = 50)
+pacf(diff(diff(Milk), 12), lag.max = 50)
+
+# fast guess paramter
+library(astsa)
+sarima(Milk, 0,1,0,0,1,1,12)
+
+
+library(astsa)
+
+d <- 1  # non seasonal difference
+DD <- 1  # seasonal difference
+per <- 12  # S = 12
+df <- NULL
+
+for(p in 1:1){
+  for(q in 1:1){
+    for(i in 1:3){
+      for(j in 1:4){
+        if(p+d+q+i+DD+j <= 10){
+          model <- arima(x = Milk, order = c((p-1), d, (q-1)), 
+                         seasonal = list(order = c((i-1), DD, (j-1)), 
+                                         period = per))
+          pval <- Box.test(model$residuals, lag = log(length(model$residuals)))
+          sse <- sum(model$residuals^2)
+          cat(p-1,d,q-1,i-1,DD,j-1,per, 
+              'AIC=', model$aic, ' SSE=', sse,' p-VALUE=', pval$p.value,'\n')
+          m <- data.frame('p' = p-1, 'd' = d, 'q' = q-1, 'P' = i-1, 'D' = DD, 'Q' = j-1, 'S' = per, 
+                    'AIC' = model$aic, 'SSE' = sse, 'pval' = pval$p.value)
+          df <- rbind(df, m)
+        }
+      }
+    }
+  }
+}
+# order by min aic, min SSE
+df[order(df$AIC, df$SSE),]
+
+# create best model
+model<- arima(x = Milk, order = c(0, 1, 0), 
+              seasonal = list(order = c(0, 1, 1), period = 12))
+# forecast with library forecast
+library(forecast)
+plot(forecast(model))
+forecast(model)
+#----
+
+## SARIMA Souvenior shop ----
+
+SUV <- read.csv('./Documents/Learning/Coursera/R Practical Time Series Analysis-SUNY/monthly-sales-for-a-souvenir-sho.csv',
+                stringsAsFactors = FALSE)
+colnames(SUV) <- c('month', 'Sales')
+SUV <- SUV[-nrow(SUV),]
+suv <- ts(as.numeric(SUV$Sales))
+
+library(astsa)
+par(mfrow=c(2,2))
+
+plot(suv, main='Monthly sales for a souvenir shop', ylab='', col='blue', lwd=3)
+plot(log(suv), main='Log-transorm of sales', ylab='', col='red', lwd=3)
+plot(diff(log(suv)), main='Differenced Log-transorm of sales', ylab='', col='brown', lwd=3)
+plot(diff(diff(log(suv)),12), main='Log-transorm without trend and seasonaliy', ylab='', col='green', lwd=3)
+
+data<-diff(diff((log(suv)),12))
+acf2(data, 50)
+
+d <- 1
+DD <- 1
+per <- 12
+for(p in 1:2){
+  for(q in 1:2){
+    for(i in 1:2){
+      for(j in 1:4){
+        if(p+d+q+i+DD+j<=10){
+          model<-arima(x=log(suv), order = c((p-1),d,(q-1)), seasonal = list(order=c((i-1),DD,(j-1)), period=per))
+          pval<-Box.test(model$residuals, lag=log(length(model$residuals)))
+          sse<-sum(model$residuals^2)
+          cat(p-1,d,q-1,i-1,DD,j-1,per, 'AIC=', model$aic, ' SSE=',sse,' p-VALUE=', pval$p.value,'\n')
+        }
+      }
+    }
+  }
+}
+
+model<- arima(x=log(suv), order = c(1,1,0), 
+              seasonal = list(order=c(0,1,1), period=12))
+
+library(forecast)
+dev.off()
+plot(forecast(model))
+forecast(model)
+
+a<-sarima.for(log(suv),12,1,1,0,0,1,1,12)
+
+plot.ts(c(suv,exp(a$pred)), main='Monthly sales + Forecast', ylab='', 
+        col='blue', lwd=3)
+#----
+
+## Quiz SARIMA ----
+par(mfrow=c(2,2))
+acData <- diff(diff(USAccDeaths, 12))
+# obtain acf and pacf below
+acf(acData, lag.max = 30, main = 'diff-12, diff')
+pacf(acData, lag.max = 30, main = 'diff-12, diff')
+acf(diff(diff(USAccDeaths), 12), lag.max = 30, main = 'diff, diff-12')
+pacf(diff(diff(USAccDeaths), 12), lag.max = 30, main = 'diff, diff-12')
+
+dev.off()
+library(astsa)
+model <- sarima(USAccDeaths, 0,1,1,0,1,1, 12)
+model$ttable
+
+sarima.for(USAccDeaths,n.ahead = 12 , 0,1,1,0,1,1, 12)
+#----
+## Forecasting ----
+rm(list = ls(all = TRUE))
+rain.data <- scan("http://robjhyndman.com/tsdldata/hurst/precip1.dat", skip = 1)
+rain.ts <- ts(rain.data, start = c(1813))
+# histogram plot
+par(mfrow = c(1 , 2))
+hist(rain.data, main = "Annual London Rainfall 1813-1912",
+     xlab = "rainfall in inches")
+qqnorm(rain.data, main = "Normal Plot of London Rainfall")
+qqline(rain.data, col = 'red')
+# time plot
+par(mfrow = c(2, 1))
+plot.ts(rain.ts, main="Annual London Rainfall 1813-1912",
+        xlab="year", ylab="rainfall in inches")
+acf(rain.ts, main="ACF: London Rainfall")
+
+# check if auto.corr.coef exist
+library(forecast)
+auto.arima(rain.ts)
+## ----
+
+## Simple Exponentail Smoothing ----
+rm(list = ls())
+setwd('/Users/Danny/Documents/Learning/Coursera/R Practical Time Series Analysis-SUNY')
+money <- read.csv(file = 'volume-of-money-abs-definition-m.csv', stringsAsFactors = F)
+money <- money[-nrow(money), ]
+money_ts <- ts(as.numeric(money[,2]), start = c(1960, 2), frequency = 12)
+par(mfrow = c(3, 1))
+plot(money_ts, main = "Time plot of Valume of Money")
+acf(money_ts)
+pacf(money_ts)
+dev.off()
+m <- HoltWinters(money_ts, gamma = FALSE)
+plot(m)
+
+## HoltWinter for Trend 
+# set up our transformed data and smoothing parameters 
+data = as.numeric(money[,2])
+N <- length(data)
+alpha <- 0.7
+beta <- 0.5
+## prepare empty arrays so we can store values
+forecast <- NULL
+level <- NULL
+trend <- NULL
+#initialize level and trend in a very simple way 
+level[1] <- data[1]
+trend[1] <- data[2] - data[1]
+
+#initialize forecast to get started 
+forecast[1] <- data[1] 
+forecast[2] <- data[2]
+
+#loop to build forecasts 
+for(n in 2:N) {
+  level[n] <- alpha*data[n] + (1-alpha)*(level[n-1] + trend[n-1])
+  trend[n] <- beta*(level[n] - level[n-1]) + (1-beta)*trend[n-1]
+  forecast[n+1] <- level[n] + trend[n]
+}
+# use HoltWinters function
+m <- HoltWinters(data, alpha = 0.7, beta = 0.5, gamma = FALSE)
+# compare loop function, HoltWinters
+par(mfcol = c(1,2))
+plot(forecast[3:N], type = 'l', main = "xhat from loop function")
+plot(m$fitted[,1], main = 'xhat from HolWinters')
+
+# ----
