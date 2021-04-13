@@ -194,5 +194,6 @@ Thumbs.db
 *.csv
 *.h5
 *.zip
+*.parq
 
 # End of https://www.toptal.com/developers/gitignore/api/osx,python,jupyternotebooks
