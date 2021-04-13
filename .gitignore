@@ -193,5 +193,6 @@ Thumbs.db
 # Data file
 *.csv
 *.h5
+*.zip
 
 # End of https://www.toptal.com/developers/gitignore/api/osx,python,jupyternotebooks
