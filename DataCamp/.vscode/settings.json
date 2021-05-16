@@ -1,4 +1,4 @@
 {
-    "python.pythonPath": "/opt/miniconda3/envs/holo/bin/python",
+    "python.pythonPath": "/opt/miniconda3/bin/python",
     "jupyter.jupyterServerType": "local"
 }
