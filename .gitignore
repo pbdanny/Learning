@@ -198,3 +198,10 @@ Thumbs.db
 
 # End of https://www.toptal.com/developers/gitignore/api/osx,python,jupyternotebooks
 token.txt
+dataset/aclImdb/imdb.vocab
+dataset/aclImdb/imdbEr.txt
+dataset/aclImdb/README
+dataset/aclImdb/test/labeledBow.feat
+dataset/aclImdb/train/labeledBow.feat
+dataset/aclImdb/train/unsupBow.feat
+DataCamp/datacamp.code-workspace
