@@ -205,3 +205,8 @@ dataset/aclImdb/test/labeledBow.feat
 dataset/aclImdb/train/labeledBow.feat
 dataset/aclImdb/train/unsupBow.feat
 DataCamp/datacamp.code-workspace
+dataset/nlp_article.txt
+.gitignore
+dataset/nlp_ner_article.txt
+dataset/nlp_scene_one.txt
+.gitignore
