@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lesson 4 — Route documents deterministically</title><link rel="stylesheet" href="../assets/course.css"></head>
+<body><article>
+<p class="kicker">Lesson 4 · 20 minutes</p><h1>Route documents deterministically</h1>
+<p class="lede">Deterministic routing means the same verified facts always produce the same profile decision—and insufficient or conflicting facts produce a review decision rather than a guess.</p>
+
+<h2>1. Route on facts, not appearance</h2>
+<p>Before field extraction, establish a small set of trustworthy facts. For invoices, use the strongest available evidence in this order:</p>
+<ol><li><strong>Supplier tax / registration ID</strong> after format validation.</li><li><strong>Document class</strong>: invoice, receipt, credit note, purchase order.</li><li><strong>Language</strong> when it is reliably detected or explicitly selected upstream.</li><li><strong>Processor and processor version</strong> as operational metadata.</li></ol>
+<p>Supplier names, logo matches, filename patterns, or layout similarity can be helpful review signals, but they are weak primary routing keys: spelling, OCR quality, and branding change.</p>
+
+<h2>2. Define strict profile predicates</h2>
+<p>A specific profile matches only when <em>every configured constraint</em> matches. For example:</p>
+<pre><code>vendor-a-thai-invoice matches when:
+  supplier_tax_id == "0105559999999"
+  AND document_class == "invoice"
+  AND language includes "th" or "en"</code></pre>
+<p>If the tax ID matches but the document is a credit note, do not reuse the invoice profile just because it belongs to the same supplier. Use the default profile or a credit-note profile.</p>
+
+<h2>3. Make the decision rules explicit</h2>
+<pre><code>1. Evaluate every non-default profile.
+2. Reject a profile if any configured predicate fails or is absent.
+3. Score surviving profiles from stable facts:
+   tax ID = 1000, document class = 100, language = 10.
+4. Select a unique highest score; use priority only as a documented business override.
+5. If no specific profile matches, select exactly one default profile.
+6. If top profiles tie, route to REVIEW—never choose alphabetically.</code></pre>
+
+<div class="callout"><strong>Deterministic does not mean “always automatic.”</strong> A review outcome is deterministic too. It is the correct result when the evidence cannot uniquely justify one profile.</div>
+
+<h2>4. Working example</h2>
+<p><code>examples/profile_router.py</code> is a dependency-free implementation. Its input is intentionally small:</p>
+<pre><code>RoutingFacts(
+    supplier_tax_id="0105-5599-9999-9",
+    document_class="invoice",
+    languages=("th",),
+)</code></pre>
+<p>It normalizes only identifier formatting, applies strict matching, and returns either:</p>
+<pre><code>RouteDecision(status="ROUTED", profile_id="vendor-a-thai-invoice", ...)
+# or
+RouteDecision(status="REVIEW", profile_id=None,
+              reason="ambiguous profile match; no arbitrary tie-break", ...)</code></pre>
+
+<h2>5. Where routing facts come from</h2>
+<table><thead><tr><th>Fact</th><th>Source</th><th>Gate before routing</th></tr></thead><tbody>
+<tr><td>Supplier tax ID</td><td>Document AI entity, barcode, or verified vendor master</td><td>Identifier format/checksum, expected length, source confidence.</td></tr>
+<tr><td>Document class</td><td>Upstream classification or a document processor</td><td>Known class and mutually compatible profile.</td></tr>
+<tr><td>Language</td><td>OCR language detection or ingestion metadata</td><td>Do not use a low-confidence guess to select a vendor-specific rule.</td></tr>
+</tbody></table>
+
+<section class="exercise"><h2>Retrieval practice</h2><p>A PDF has Vendor A’s tax ID but is a credit note. There is no credit-note profile. What route should it take, and why is applying Vendor A’s invoice profile unsafe?</p><p class="answer">Reply in two sentences. Then say which new profile you would add only after enough reviewed credit notes accumulate.</p></section>
+<footer>Run: <code>python3 examples/test_profile_router.py</code>. The tests demonstrate exact matching, default fallback, conflicting document classes, and ambiguity.</footer>
+</article></body></html>

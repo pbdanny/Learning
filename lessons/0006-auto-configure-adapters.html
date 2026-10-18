@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lesson 6 — Auto-adjust adapters safely</title><link rel="stylesheet" href="../assets/course.css"></head>
+<body><article>
+<p class="kicker">Lesson 6 · 25 minutes</p><h1>Auto-adjust adapters safely</h1>
+<p class="lede">Yes—but separate immediate runtime fallback from learning across documents. A financial-document adapter should never rewrite its own production rules after one invoice. It should learn candidate changes from reviewed corrections, prove them on held-out data, and promote a versioned configuration through an explicit gate.</p>
+
+<h2>Two meanings of “auto-adjust”</h2>
+<table><thead><tr><th>Mode</th><th>Safe behavior</th><th>Unsafe behavior</th></tr></thead><tbody>
+<tr><td>Within one document</td><td>Try ranked resolvers, validate, fall back to a generic adapter, or send to review.</td><td>Change the global mapping because one field failed.</td></tr>
+<tr><td>Across many documents</td><td>Aggregate reviewed corrections, propose a draft profile, test it in shadow/held-out evaluation, then promote a version.</td><td>Continuously update active production rules from unreviewed model output.</td></tr>
+</tbody></table>
+
+<h2>The safe learning loop</h2>
+<pre><code>processed document + human correction
+              ↓
+      reviewed observation store
+              ↓
+cluster by vendor / class / language
+              ↓
+propose aliases, candidate rules, validations
+              ↓
+      DRAFT adapter configuration
+              ↓
+held-out regression evaluation
+              ↓
+approval → versioned ACTIVE configuration</code></pre>
+
+<h2>What can be generated automatically</h2>
+<ul><li>Recurring supplier/document/language profiles.</li><li>Label aliases such as <code>ยอดรวมสุทธิ → total_amount</code>.</li><li>Observed entity-type mappings.</li><li>Candidate precedence based on verified success rates.</li><li>Empirical confidence/review thresholds.</li><li>Warnings for aliases that map to several canonical fields.</li></ul>
+
+<h2>What should not be auto-promoted</h2>
+<ul><li>A rule learned from one document.</li><li>A mapping inferred only from model output without human truth.</li><li>A change evaluated on the same documents that generated it.</li><li>A vendor identity inferred from fuzzy supplier text.</li><li>A configuration that lowers accuracy in another vendor or language cluster.</li></ul>
+
+<h2>Minimum promotion contract</h2>
+<table><thead><tr><th>Gate</th><th>Example policy</th></tr></thead><tbody>
+<tr><td>Reviewed support</td><td>Alias appears correctly in at least 5 distinct reviewed documents.</td></tr>
+<tr><td>Precision</td><td>At least 98% correct mapping for high-risk financial fields.</td></tr>
+<tr><td>Held-out test</td><td>No document used to discover the rule appears in the evaluation set.</td></tr>
+<tr><td>Regression</td><td>No unacceptable decrease in any vendor/language/document-class cluster.</td></tr>
+<tr><td>Versioning</td><td>Immutable config version, source hashes, author/approver, and rollback target.</td></tr>
+<tr><td>Approval</td><td>Human approval before changing the active profile registry.</td></tr>
+</tbody></table>
+
+<h2>Google features versus your adapter</h2>
+<p>Document AI can help create or train the extraction layer. Automated schema generation can propose a custom-extractor schema from a test document; Google presents it for approval or editing. Auto-labeling can pre-populate document labels, but the labels must be reviewed and marked as labeled before they can be used for training or testing. These capabilities can reduce labeling work, but they do not define your application’s canonical record, routing policy, accounting validation, or deployment approval.</p>
+
+<h2>Working example</h2>
+<p><code>examples/adapter_config_suggester.py</code> consumes only human-reviewed observations. It groups examples by supplier tax ID, document class, and language; then proposes aliases only when they recur across enough documents and meet a precision gate.</p>
+<pre><code>ReviewedObservation(
+  document_id="invoice-0042",
+  supplier_tax_id="0105559999999",
+  document_class="invoice",
+  language="th",
+  canonical_field="total_amount",
+  observed_alias="ยอดรวมสุทธิ",
+  mapping_correct=True,
+)</code></pre>
+<p>The output is always:</p>
+<pre><code>status = "DRAFT"</code></pre>
+<p>It never edits the active adapter registry. A separate promotion workflow must compare the draft against held-out ground truth, produce a diff, receive approval, and then activate a version.</p>
+
+<h2>When auto-configuration is not enough</h2>
+<p>If many layouts require brittle aliases or position rules, move the learning problem into a Custom Extractor and keep the adapter thin. The adapter still remains responsible for typed output, evidence, business validation, and review routing.</p>
+
+<section class="exercise"><h2>Retrieval practice</h2><p>A new alias appears correctly in 12 reviewed invoices, but all 12 come from the same layout batch and no held-out examples exist. Should it become active automatically?</p><p class="answer">Reply with the decision and the missing evidence. Separate “good discovery evidence” from “safe deployment evidence.”</p></section>
+<footer>Run: <code>python3 examples/test_adapter_config_suggester.py</code>. The tests cover a good recurring alias, a conflicting/weak alias, and an under-supported cluster.</footer>
+</article></body></html>

@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Document AI glossary</title><link rel="stylesheet" href="../assets/course.css"></head>
+<body><article>
+<p class="kicker">Reference</p><h1>Document AI glossary</h1>
+<dl>
+<dt><strong>Processor</strong></dt><dd>A deployed Document AI resource configured for one task: OCR, form parsing, invoice parsing, or custom extraction. Your API request targets a processor name, not merely a processor type.</dd>
+<dt><strong>Processor type</strong></dt><dd>The capability family used when creating a processor, such as <code>INVOICE_PROCESSOR</code>, <code>FORM_PARSER_PROCESSOR</code>, or <code>OCR_PROCESSOR</code>.</dd>
+<dt><strong><code>Document</code></strong></dt><dd>The canonical response object. It contains full text plus structured annotations such as pages, entities, tables, and layouts.</dd>
+<dt><strong>Entity</strong></dt><dd>A semantic field returned by a specialized, form, or custom processor. An invoice total or supplier name is an entity; it is not automatically a validated accounting value.</dd>
+<dt><strong>Text anchor</strong></dt><dd>A span pointing into <code>Document.text</code>. Preserve it to show where an extracted value came from and to make review/debugging possible.</dd>
+<dt><strong>Synchronous processing</strong></dt><dd>A request for one document that returns a <code>Document</code> directly. Use it for interactive or small-document paths within the processor's limits.</dd>
+<dt><strong>Batch processing</strong></dt><dd>An asynchronous operation for many documents, typically using Cloud Storage for input and output. Use it when the workflow is not interactive or documents exceed synchronous limits.</dd>
+<dt><strong>Normalization</strong></dt><dd>A processor feature that can express certain values in typed forms, such as dates, money, and numbers. Validate the value against your own business rules anyway.</dd>
+</dl>
+<footer>Keep this page open while reading the first lesson. Return to the source <code>Document</code> whenever a field’s meaning is unclear.</footer>
+</article></body></html>

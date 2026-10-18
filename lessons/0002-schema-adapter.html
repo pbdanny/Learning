@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lesson 2 — Build a schema adapter</title><link rel="stylesheet" href="../assets/course.css"></head>
+<body><article>
+<p class="kicker">Lesson 2 · 20 minutes</p><h1>Build a schema adapter as a pure boundary</h1>
+<p class="lede">A schema adapter protects the rest of your system from a vendor-specific response. It takes a saved Document AI response and returns one stable, validated application record.</p>
+
+<h2>1. Start with the output contract</h2>
+<p>Do <em>not</em> begin by looping over <code>document.entities</code>. First define the record your database, API, or CSV should receive:</p>
+<pre><code>InvoiceRecord(
+  invoice_number, supplier_name, invoice_date,
+  net_amount, vat_amount, total_amount, currency,
+  evidence
+)</code></pre>
+<p>Each field needs a rule: accepted Document AI entity types, expected value kind, and whether absence blocks automation. This is the application contract; it is owned by you, not by Google.</p>
+
+<h2>2. Keep three jobs separate</h2>
+<table><thead><tr><th>Layer</th><th>Responsibility</th><th>Example</th></tr></thead><tbody>
+<tr><td>Document AI client</td><td>Calls Google and saves the raw <code>Document</code> response.</td><td>One PDF → JSON response.</td></tr>
+<tr><td>Schema adapter</td><td>Maps entities into your canonical fields; retains evidence.</td><td><code>total_amount</code> becomes a <code>Decimal</code> plus source span.</td></tr>
+<tr><td>Validator / policy</td><td>Applies business rules and routes exceptions.</td><td><code>net + VAT == total</code>, otherwise review.</td></tr>
+</tbody></table>
+
+<h2>3. The adapter algorithm</h2>
+<ol><li><strong>Index entities by type.</strong> Never make downstream code search a list repeatedly.</li><li><strong>Select candidates deliberately.</strong> If several could populate a singular field, record ambiguity rather than silently choosing one.</li><li><strong>Parse normalized values first.</strong> Dates and money should come from the processor’s normalized value where present; do not parse locale-sensitive display text as a hidden fallback.</li><li><strong>Preserve evidence.</strong> Keep the original entity type, extracted text, confidence, page, and text-anchor offsets.</li><li><strong>Validate cross-field rules.</strong> Totals, currencies, required fields, and duplicate identifiers are business policy.</li><li><strong>Return data plus errors.</strong> A review flag is a valid output; a fabricated value is not.</li></ol>
+
+<h2>4. Working starter implementation</h2>
+<p>The repository now contains <code>examples/document_ai_schema_adapter.py</code>. It is dependency-free and intentionally accepts a JSON-like saved Document response rather than a live Google SDK object. The test file constructs two representative responses: one valid and one where the arithmetic mismatch must trigger review.</p>
+<pre><code>from document_ai_schema_adapter import FieldRule, adapt_invoice
+
+rules = {
+  "invoice_number": FieldRule(("invoice_id",), "text", required=True),
+  "invoice_date": FieldRule(("invoice_date",), "date", required=True),
+  "total_amount": FieldRule(("total_amount",), "money", required=True),
+}
+result = adapt_invoice(saved_document_json, rules)
+
+if result.needs_review:
+    send_to_review(result.record, result.errors)
+else:
+    persist(result.record)</code></pre>
+
+<div class="callout warning"><strong>Configure, do not guess.</strong> The entity names in <code>FieldRule</code> must come from a stored sample response from the exact processor and version you selected. Different processors return different entity sets and nested structures.</div>
+
+<h2>5. How to use it on a real corpus</h2>
+<ol><li>Process 10–30 representative PDFs and save every raw response.</li><li>Inspect actual entity types, values, confidence, and missing cases.</li><li>Write the field rules from those observations.</li><li>Add one failing test per known failure mode: absent total, multiple totals, wrong currency, invalid date, totals mismatch.</li><li>Only then connect the adapter to the workflow or database.</li></ol>
+
+<section class="exercise"><h2>Retrieval practice</h2><p>Why should the adapter return a record <em>and</em> errors rather than throwing away the whole document when its total does not balance?</p><p class="answer">Reply in one or two sentences. Then name the first business rule you would add for your invoices beyond the arithmetic check.</p></section>
+<footer>Files: <code>examples/document_ai_schema_adapter.py</code> and <code>examples/test_document_ai_schema_adapter.py</code>. Run the test before changing the mapping.</footer>
+</article></body></html>

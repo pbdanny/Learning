@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lesson 3 — Handle invoice variation</title><link rel="stylesheet" href="../assets/course.css"></head>
+<body><article>
+<p class="kicker">Lesson 3 · 25 minutes</p><h1>Handle variation with profiles, not a giant adapter</h1>
+<p class="lede">Many invoice layouts do not require many downstream schemas. Keep one canonical invoice record. Make the adapter a router that selects a small profile and a set of field resolvers for each document family.</p>
+
+<div class="callout"><strong>The rule:</strong> <em>one stable output schema, many controlled input profiles.</em> Never let every vendor’s PDF shape leak into your database model.</div>
+
+<h2>1. The architecture</h2>
+<pre><code>Raw Document AI response
+        │
+        ▼
+Document-family router ──► default profile / vendor profile / manual-review route
+        │
+        ▼
+Field resolvers ──► candidate values + evidence, never a silent overwrite
+        │
+        ▼
+Normalizer ──► Decimal, ISO date, currency, supplier identifiers
+        │
+        ▼
+Validator ──► required fields, totals, VAT, currency, duplicates
+        │
+        ▼
+Canonical InvoiceRecord + review reasons</code></pre>
+
+<h2>2. What a profile is</h2>
+<p>A profile is configuration plus narrowly scoped rules for a document family. It should answer:</p>
+<ul><li><strong>When does this profile apply?</strong> Prefer supplier tax ID, registered vendor ID, language, processor type, and document class. Do not route on fuzzy supplier text alone.</li><li><strong>Where can each field be found?</strong> A prioritized list of entity types, labels, or table positions.</li><li><strong>What validates the result?</strong> Allowed currency, totals logic, expected tax rules, identifier format, and whether the field is required.</li><li><strong>When does it stop?</strong> Ambiguity, failed validation, or poor evidence routes to review.</li></ul>
+<p>See <code>reference/invoice-adapter-profile.example.json</code> for a default profile and a Thai vendor override. The values are illustrative; replace match identifiers and entity types from your own saved corpus.</p>
+
+<h2>3. Resolve fields as a ranked candidate set</h2>
+<p>Do not write:</p><pre><code>total = first_entity_of_type("total_amount")</code></pre>
+<p>Instead, collect candidates, evaluate them, and keep the winner <em>and</em> the rejected evidence:</p>
+<pre><code>candidates = [
+  from_entity_types(["total_amount", "invoice_total"]),
+  from_labels(["Grand Total", "ยอดรวมสุทธิ"]),
+]
+resolved = choose_one(candidates,
+  requires_currency=True,
+  passes_amount_rules=True,
+  confidence_threshold=profile_threshold,
+)
+
+if resolved.is_ambiguous or not resolved.is_valid:
+    review("total_amount", resolved.reasons)</code></pre>
+<p>The point is not the confidence threshold. The point is a visible decision policy that you can change and test.</p>
+
+<h2>4. Add profiles only when the data earns them</h2>
+<table><thead><tr><th>Situation</th><th>Response</th></tr></thead><tbody>
+<tr><td>One-off scan-quality failure</td><td>Review it; do not create a vendor profile.</td></tr>
+<tr><td>Repeated label alias or table layout for one supplier</td><td>Add a narrow supplier profile with tests.</td></tr>
+<tr><td>Different document class, such as credit note</td><td>Add a document-class route and a separate contract if business semantics differ.</td></tr>
+<tr><td>Field is consistently unavailable from the processor</td><td>Use a different processor or custom extraction experiment; do not pile up regex patches.</td></tr>
+<tr><td>Several plausible values for a singular field</td><td>Emit an ambiguity result and review it; never choose quietly.</td></tr>
+</tbody></table>
+
+<h2>5. Evaluate by variation cluster</h2>
+<p>An average accuracy number can hide failures. Split your test corpus by vendor, language, scan quality, document class, page count, and layout family. Measure each required field in every cluster. A profile is ready only when its target cluster has an acceptable error rate and its fallback/review behavior is tested.</p>
+
+<h2>6. Change process</h2>
+<ol><li>Save the raw response and a human-verified expected record for each failure.</li><li>Classify the failure: routing, candidate extraction, normalization, validation, or processor capability.</li><li>Add the smallest profile rule that fixes the recurring class.</li><li>Add regression tests for the failing document and at least one nearby nonmatching document.</li><li>Re-run the complete stratified evaluation before enabling the change.</li></ol>
+
+<section class="exercise"><h2>Retrieval practice</h2><p>Vendor A and Vendor B both issue Thai invoices. Their supplier tax IDs differ; Vendor A uses <em>ยอดรวมสุทธิ</em> while Vendor B uses a footer table where the total is unlabeled. Which parts belong in the canonical schema, which become profiles, and when should a document go to manual review?</p><p class="answer">Reply with your design in three bullets. I will check whether the routing, field resolution, and review policy are separated correctly.</p></section>
+<footer>Next lesson: use a labeled corpus to decide whether profiles are sufficient or a custom extractor is justified.</footer>
+</article></body></html>

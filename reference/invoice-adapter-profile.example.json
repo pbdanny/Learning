@@ -1,0 +1,70 @@
+{
+  "canonical_schema": "invoice-v1",
+  "profiles": [
+    {
+      "id": "default-invoice",
+      "priority": 0,
+      "match": {},
+      "fields": {
+        "invoice_number": {
+          "required": true,
+          "value_kind": "text",
+          "candidates": [
+            {"entity_types": ["invoice_id", "invoice_number"]}
+          ]
+        },
+        "supplier_name": {
+          "required": true,
+          "value_kind": "text",
+          "candidates": [
+            {"entity_types": ["supplier_name", "vendor_name"]}
+          ]
+        },
+        "invoice_date": {
+          "required": true,
+          "value_kind": "date",
+          "candidates": [
+            {"entity_types": ["invoice_date", "date"]}
+          ]
+        },
+        "total_amount": {
+          "required": true,
+          "value_kind": "money",
+          "candidates": [
+            {"entity_types": ["total_amount", "invoice_total", "amount_due"]}
+          ]
+        }
+      },
+      "validation": {
+        "allowed_currencies": ["THB", "USD"],
+        "require_nonnegative_total": true
+      }
+    },
+    {
+      "id": "vendor-a-thai",
+      "extends": "default-invoice",
+      "priority": 100,
+      "match": {
+        "supplier_tax_ids": ["0105559999999"],
+        "languages": ["th", "en"]
+      },
+      "fields": {
+        "invoice_number": {
+          "candidates": [
+            {"entity_types": ["invoice_id"]},
+            {"label_aliases": ["เลขที่ใบกำกับภาษี", "Tax Invoice No."]}
+          ]
+        }
+      },
+      "validation": {
+        "allowed_currencies": ["THB"],
+        "expected_vat_rate": "0.07"
+      }
+    }
+  ],
+  "review_policy": {
+    "minimum_field_confidence": 0.85,
+    "review_on_ambiguity": true,
+    "review_on_failed_validation": true
+  }
+}

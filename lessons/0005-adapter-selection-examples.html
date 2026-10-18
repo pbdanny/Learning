@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lesson 5 — Adapter selection examples</title><link rel="stylesheet" href="../assets/course.css"></head>
+<body><article>
+<p class="kicker">Lesson 5 · 20 minutes</p><h1>Adapter selection: eight concrete cases</h1>
+<p class="lede">Select the most specific adapter justified by trustworthy facts. When strong facts are missing, fall back to a broader adapter; when facts conflict or profiles tie, review instead of guessing.</p>
+
+<h2>The adapter hierarchy</h2>
+<pre><code>vendor + document class + language adapter
+            ↓ if no exact match
+    document class + language adapter
+            ↓ if no exact match
+       document class adapter
+            ↓ if no exact match
+       manual-review default</code></pre>
+<p>Specificity should change field-resolution rules, not the canonical output schema.</p>
+
+<h2>Examples</h2>
+<table><thead><tr><th>Routing facts</th><th>Selected adapter</th><th>Why</th></tr></thead><tbody>
+<tr><td>Tax ID A + invoice + Thai</td><td><code>vendor-a-invoice</code></td><td>The vendor, class, and language all match. This can contain Vendor A aliases and validations.</td></tr>
+<tr><td>Tax ID A + credit note + Thai</td><td><code>vendor-a-credit-note</code></td><td>Same vendor does not mean same semantics. Negative amounts and reference-invoice fields need different rules.</td></tr>
+<tr><td>Unknown tax ID + invoice + Thai</td><td><code>generic-thai-invoice</code></td><td>No vendor-specific rule is justified, but class and language are reliable.</td></tr>
+<tr><td>No tax ID + invoice + English</td><td><code>generic-english-invoice</code></td><td>Missing identity must not be filled from a fuzzy supplier-name guess.</td></tr>
+<tr><td>Looks like Vendor A, but tax ID is unreadable</td><td><code>generic-thai-invoice</code></td><td>Visual similarity is evidence for review, not permission to apply vendor-specific accounting rules.</td></tr>
+<tr><td>Tax ID A + receipt + Thai</td><td><code>generic-receipt</code></td><td>The Vendor A invoice profile is rejected because the document class conflicts.</td></tr>
+<tr><td>No vendor + form + Thai</td><td><code>generic-thai-form</code></td><td>Use form key-value/table rules rather than invoice entity mappings.</td></tr>
+<tr><td>Unknown class or contradictory facts</td><td><code>manual-review-default</code></td><td>No automated adapter is sufficiently justified.</td></tr>
+</tbody></table>
+
+<h2>Trusted metadata can be stronger than OCR</h2>
+<p>If a supplier uploads through an authenticated portal tied to ERP vendor ID <code>V-1042</code>, that upstream ID may be a stronger routing fact than an OCR-extracted supplier name. Preserve provenance:</p>
+<pre><code>supplier_id = "V-1042"
+supplier_id_source = "authenticated_vendor_portal"
+
+ocr_tax_id = "0105559999999"
+ocr_tax_id_valid = True</code></pre>
+<p>If the trusted vendor master and OCR tax ID disagree, do not choose one silently. Route to review with a reason such as <code>vendor_identity_conflict</code>.</p>
+
+<h2>Selection is different from field extraction</h2>
+<p>The router should use only a few stable facts. The selected adapter can then search many labels and structures:</p>
+<pre><code>router:
+  tax ID + class + language → vendor-a-invoice-adapter
+
+adapter:
+  invoice_number candidates:
+    invoice_id entity
+    "เลขที่ใบกำกับภาษี"
+    "Tax Invoice No."
+
+validator:
+  required invoice number
+  THB currency
+  net + VAT == total</code></pre>
+<p>Do not route using the same weak label aliases that the adapter uses to resolve fields. That creates a circular decision: the assumed adapter determines the vendor, and the assumed vendor determines the adapter.</p>
+
+<h2>Operational rules</h2>
+<ul>
+<li><strong>Known vendor, wrong class:</strong> choose the class-specific adapter, not the vendor’s invoice adapter.</li>
+<li><strong>Known class, missing vendor:</strong> choose a generic class/language adapter.</li>
+<li><strong>Two equally specific matches:</strong> review and fix the profile configuration.</li>
+<li><strong>Unknown everything:</strong> preserve raw output and use the manual-review default.</li>
+<li><strong>One-off layout difference:</strong> keep the current adapter and review; create a new profile only after recurrence is demonstrated.</li>
+</ul>
+
+<section class="exercise"><h2>Retrieval practice</h2><p>An authenticated portal says vendor ID <code>V-1042</code>, OCR extracts a valid tax ID belonging to Vendor B, and the document classifier says <code>invoice</code>. Which adapter should be selected?</p><p class="answer">Answer with the route and reason. The correct design does not silently trust either conflicting identity.</p></section>
+<footer>Runnable examples: <code>python3 examples/adapter_selection_examples.py</code>. It checks eight routes and one ambiguity case.</footer>
+</article></body></html>

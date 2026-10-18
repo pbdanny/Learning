@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lesson 1 — Choose the right Document AI processor</title><link rel="stylesheet" href="../assets/course.css"></head>
+<body><article>
+<p class="kicker">Lesson 1 · 15–20 minutes</p>
+<h1>Choose the processor before you write the pipeline</h1>
+<p class="lede">The first Document AI design decision is not “which API call?” It is “what contract do I want Google to return?” OCR, invoice parsing, form parsing, and custom extraction all return a <code>Document</code>, but they promise different structure.</p>
+
+<div class="callout"><strong>Target outcome.</strong> For an invoice or form, produce fields that are traceable to the source PDF, validated by your application, and evaluated on a representative corpus—not merely text that looks plausible.</div>
+
+<h2>1. The mental model</h2>
+<p>Document AI has two layers:</p>
+<ol>
+<li><strong>Processor choice</strong> determines the model capability: text/layout OCR, generic form structure, invoice semantics, or a custom schema.</li>
+<li><strong>Your extraction contract</strong> decides what your application accepts: required fields, null policy, type normalization, evidence spans, confidence/review thresholds, and error handling.</li>
+</ol>
+<p>The API request names one processor resource:</p>
+<pre><code>projects/{PROJECT_ID}/locations/{LOCATION}/processors/{PROCESSOR_ID}</code></pre>
+<p>Calling <code>process</code> with a PDF returns a <code>Document</code>. Keep the raw response. Its <code>text</code> is a canonical text buffer; entities and layout objects point back to it through text anchors. See the <a href="../reference/document-ai-glossary.html">glossary</a>.</p>
+
+<h2>2. The four choices that matter</h2>
+<table><thead><tr><th>Use this</th><th>When it fits</th><th>What you get</th><th>Do not assume</th></tr></thead><tbody>
+<tr><td><strong>Invoice Parser</strong></td><td>Invoices resemble the supported invoice domain and its supplied fields are close to your schema.</td><td>Invoice entities such as supplier, invoice ID, dates, totals, tax, and line items.</td><td>Every vendor layout, language, and accounting rule will be correct.</td></tr>
+<tr><td><strong>Form Parser</strong></td><td>Forms have labeled key-value fields, simple tables, or checkboxes; the target fields vary.</td><td>Key-value pairs, tables, selection marks, generic entities, and text.</td><td>A stable business schema; you must map inconsistent labels yourself.</td></tr>
+<tr><td><strong>Enterprise Document OCR</strong></td><td>You primarily need text, reading order, layout, quality signals, or language/rotation control.</td><td>High-quality document OCR plus layout, pages, blocks, lines, tokens, and optional OCR features.</td><td>Invoice semantics; your code or a later model must infer fields.</td></tr>
+<tr><td><strong>Custom Extractor</strong></td><td>You need a defined proprietary schema not covered by managed processors.</td><td>Entities matching a schema you specify, using a foundation, custom-model, or template approach.</td><td>It is the right first step; baseline a managed processor first.</td></tr>
+</tbody></table>
+
+<div class="callout warning"><strong>Important language test.</strong> The published Invoice Parser language list currently does not include Thai. Enterprise Document OCR is the safer baseline for Thai or mixed-language invoices, then compare a parser only on a labeled sample. Never infer support from a successful demo on English documents.</div>
+
+<h2>3. The recommendation for your first experiment</h2>
+<p>Run a paired baseline on the same small, representative corpus:</p>
+<ol>
+<li><strong>Enterprise Document OCR:</strong> establishes whether text, reading order, and layout are sufficient across scan quality and languages.</li>
+<li><strong>Invoice Parser</strong> for invoice-like documents and/or <strong>Form Parser</strong> for generic forms: measures the convenience of semantic extraction.</li>
+</ol>
+<p>For each document, persist: source file hash, processor/version/location, raw <code>Document</code> JSON, parsed application record, field-level validation result, and a human-reviewed label when available. This prevents a shiny UI result from becoming an unmeasurable production dependency.</p>
+
+<h2>4. A minimal Python call</h2>
+<p>Install the official client and authenticate locally with Application Default Credentials:</p>
+<pre><code>uv add google-cloud-documentai
+gcloud auth application-default login</code></pre>
+<pre><code>from pathlib import Path
+from google.api_core.client_options import ClientOptions
+from google.cloud import documentai
+
+
+def process_pdf(project_id: str, location: str, processor_id: str, path: str):
+    # `location` must match the processor's location, for example "us" or "eu".
+    client = documentai.DocumentProcessorServiceClient(
+        client_options=ClientOptions(
+            api_endpoint=f"{location}-documentai.googleapis.com"
+        )
+    )
+    raw_document = documentai.RawDocument(
+        content=Path(path).read_bytes(),
+        mime_type="application/pdf",
+    )
+    request = documentai.ProcessRequest(
+        name=client.processor_path(project_id, location, processor_id),
+        raw_document=raw_document,
+    )
+    return client.process_document(request=request).document
+
+
+# document = process_pdf("my-project", "us", "PROCESSOR_ID", "sample.pdf")
+# print(document.text[:500])</code></pre>
+<p>This call is deliberately not an extraction pipeline. It proves only the boundary: authenticated request in, raw <code>Document</code> out. Next, write an adapter that turns the response into your schema and preserves evidence.</p>
+
+<h2>5. What failure looks like</h2>
+<ul>
+<li><strong>OCR succeeds but values are wrong:</strong> treat it as a schema/validation problem, not proof that the OCR processor failed.</li>
+<li><strong>Invoice fields are empty or inconsistent:</strong> check processor language/layout fit before adding prompt-like repair rules.</li>
+<li><strong>Numbers look plausible but disagree with totals:</strong> flag the document for review; use arithmetic and business-rule validation.</li>
+<li><strong>A workflow has no raw response:</strong> it is not auditable and cannot be debugged reliably.</li>
+</ul>
+
+<section class="exercise"><h2>Retrieval practice</h2>
+<p><strong>Scenario:</strong> You have 300 Thai/English supplier invoices. You need supplier name, invoice number, invoice date, net amount, VAT, total amount, and line items. Why is “start with Invoice Parser in production” the wrong first decision?</p>
+<p class="answer"><strong>Reply in your own words with:</strong> (1) the first processor you would baseline, (2) the second processor you would compare, and (3) the two evidence artifacts you would retain for every document. I will check the reasoning before lesson 2.</p></section>
+
+<footer><strong>Primary reading:</strong> Google Cloud’s <a href="https://cloud.google.com/document-ai/docs/processors-list">Processor list</a> and <a href="https://cloud.google.com/document-ai/docs/enterprise-document-ocr">Enterprise Document OCR guide</a>. Ask follow-up questions whenever an API concept or extraction trade-off is unclear.</footer>
+</article></body></html>
